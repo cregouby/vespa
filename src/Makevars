@@ -1,0 +1,23 @@
+CXX_STD = CXX17
+
+PKG_CPPFLAGS = \
+  -I"/usr/local/bin/include/vtk-9.5" \
+  -I"/usr/local/bin/vespa/include" \
+  -I"/opt/homebrew/include"
+
+PKG_LIBS = \
+  -L"/usr/local/bin/vespa/lib" \
+  -lvtkCGALAlgorithm \
+  -lvtkCGALPMP \
+  -lvtkCGALDelaunay \
+  -lvtkCGALPSP \
+  -lvtkCGALSR \
+  -L"/usr/local/bin/lib" \
+  -lvtkCommonCore-9.5 \
+  -lvtkCommonDataModel-9.5 \
+  -lvtkCommonExecutionModel-9.5 \
+  -lvtkFiltersCore-9.5 \
+  -lvtkFiltersExtraction-9.5 \
+  -lvtkFiltersGeometry-9.5 \
+  -Wl,-rpath,"/usr/local/bin/vespa/lib" \
+  -Wl,-rpath,"/usr/local/bin/lib"

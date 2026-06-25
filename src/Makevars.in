@@ -1,0 +1,23 @@
+CXX_STD = CXX17
+
+PKG_CPPFLAGS = \
+  -I"@VTK_INC@" \
+  -I"@VESPA_INC@" \
+  -I"@CGAL_INC@"
+
+PKG_LIBS = \
+  -L"@VESPA_LIBDIR@" \
+  -lvtkCGALAlgorithm \
+  -lvtkCGALPMP \
+  -lvtkCGALDelaunay \
+  -lvtkCGALPSP \
+  -lvtkCGALSR \
+  -L"@VTK_LIBDIR@" \
+  -lvtkCommonCore-@VTK_VERSION_SUFFIX@ \
+  -lvtkCommonDataModel-@VTK_VERSION_SUFFIX@ \
+  -lvtkCommonExecutionModel-@VTK_VERSION_SUFFIX@ \
+  -lvtkFiltersCore-@VTK_VERSION_SUFFIX@ \
+  -lvtkFiltersExtraction-@VTK_VERSION_SUFFIX@ \
+  -lvtkFiltersGeometry-@VTK_VERSION_SUFFIX@ \
+  -Wl,-rpath,"@VESPA_LIBDIR@" \
+  -Wl,-rpath,"@VTK_LIBDIR@"
