@@ -23,7 +23,9 @@
 vespa_sdf <- function(mesh,
                       base_resolution = 64L,
                       padding         = 0L) {
-  cli::cli_abort(
-    "vespa_sdf() requires {.code vtkCGALSignedDistanceFunction}, which is not available in this Vespa installation."
-  )
+  res <- rcpp_sdf(mesh,
+                  base_resolution = as.integer(base_resolution),
+                  padding         = as.integer(padding))
+  res$array <- array(res$values, dim = res$dims)
+  res
 }

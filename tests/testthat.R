@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(rvespa)
+library(vespa)
 
-test_check("rvespa")
+test_check("vespa")

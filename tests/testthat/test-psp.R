@@ -18,7 +18,7 @@ test_that("vespa_read_points errors on missing file", {
 })
 
 test_that("vespa_read_points reads a .xyz point cloud", {
-  path <- system.file("testdata", "test_points.xyz", package = "rvespa")
+  path <- system.file("testdata", "test_points.xyz", package = "vespa")
   skip_if(nchar(path) == 0, "test_points.xyz not installed")
   result <- vespa_read_points(path)
   expect_s3_class(result, "mesh3d")

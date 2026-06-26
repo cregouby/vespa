@@ -13,7 +13,7 @@ Rcpp::List rcpp_poisson_recon(
     double distance    = 0.375,
     bool   gen_normals = true)
 {
-    auto input = rvespa::mesh3d_to_vtk_with_normals(mesh);
+    auto input = vespa::mesh3d_to_vtk_with_normals(mesh);
 
     vtkNew<vtkCGALPoissonSurfaceReconstructionDelaunay> filter;
     filter->SetInputData(input);
@@ -22,16 +22,16 @@ Rcpp::List rcpp_poisson_recon(
     filter->SetDistance(distance);
     filter->SetGenerateSurfaceNormals(gen_normals);
 
-    rvespa::VtkError err;
-    rvespa::install_error_observer(filter, err);
+    vespa::VtkError err;
+    vespa::install_error_observer(filter, err);
     filter->Update();
-    rvespa::check_vtk_error(err, "PoissonRecon");
+    vespa::check_vtk_error(err, "PoissonRecon");
 
     vtkPolyData* out = filter->GetOutput();
     if (!out || out->GetNumberOfPoints() == 0)
         Rcpp::stop("PoissonRecon produced empty output");
 
-    return rvespa::vtk_to_mesh3d(out);
+    return vespa::vtk_to_mesh3d(out);
 }
 
 // [[Rcpp::export]]
@@ -40,21 +40,21 @@ Rcpp::List rcpp_advancing_front(
     double per               = 0.0,
     double radius_ratio_bound = 5.0)
 {
-    auto input = rvespa::mesh3d_to_vtk_with_normals(mesh);
+    auto input = vespa::mesh3d_to_vtk_with_normals(mesh);
 
     vtkNew<vtkCGALAdvancingFrontSurfaceReconstruction> filter;
     filter->SetInputData(input);
     filter->SetPer(per);
     filter->SetRadiusRatioBound(radius_ratio_bound);
 
-    rvespa::VtkError err;
-    rvespa::install_error_observer(filter, err);
+    vespa::VtkError err;
+    vespa::install_error_observer(filter, err);
     filter->Update();
-    rvespa::check_vtk_error(err, "AdvancingFront");
+    vespa::check_vtk_error(err, "AdvancingFront");
 
     vtkPolyData* out = filter->GetOutput();
     if (!out || out->GetNumberOfPoints() == 0)
         Rcpp::stop("AdvancingFront produced empty output");
 
-    return rvespa::vtk_to_mesh3d(out);
+    return vespa::vtk_to_mesh3d(out);
 }

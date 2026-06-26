@@ -17,7 +17,7 @@
 #include <string>
 
 // mesh3d → vtkPolyData
-vtkSmartPointer<vtkPolyData> rvespa::mesh3d_to_vtk(const Rcpp::List& mesh) {
+vtkSmartPointer<vtkPolyData> vespa::mesh3d_to_vtk(const Rcpp::List& mesh) {
     Rcpp::NumericMatrix vb = mesh["vb"]; // 4 × N  (x, y, z, w per column)
     Rcpp::IntegerMatrix it = mesh["it"]; // 3 × M  (1-based vertex indices)
 
@@ -47,7 +47,7 @@ vtkSmartPointer<vtkPolyData> rvespa::mesh3d_to_vtk(const Rcpp::List& mesh) {
 }
 
 // mesh3d or point cloud → vtkPolyData with points + optional normals from $normals (3×N)
-vtkSmartPointer<vtkPolyData> rvespa::mesh3d_to_vtk_with_normals(const Rcpp::List& mesh) {
+vtkSmartPointer<vtkPolyData> vespa::mesh3d_to_vtk_with_normals(const Rcpp::List& mesh) {
     Rcpp::NumericMatrix vb = mesh["vb"];
     const int nv = vb.ncol();
 
@@ -76,7 +76,7 @@ vtkSmartPointer<vtkPolyData> rvespa::mesh3d_to_vtk_with_normals(const Rcpp::List
 }
 
 // vtkPolyData → mesh3d
-Rcpp::List rvespa::vtk_to_mesh3d(vtkPolyData* poly) {
+Rcpp::List vespa::vtk_to_mesh3d(vtkPolyData* poly) {
     const int nv = static_cast<int>(poly->GetNumberOfPoints());
     const int nf = static_cast<int>(poly->GetNumberOfCells());
 
@@ -108,7 +108,7 @@ Rcpp::List rvespa::vtk_to_mesh3d(vtkPolyData* poly) {
 }
 
 // vtkPolyData (point cloud) → mesh3d with empty $it and optional $normals (3×N)
-Rcpp::List rvespa::vtk_to_pointcloud(vtkPolyData* poly) {
+Rcpp::List vespa::vtk_to_pointcloud(vtkPolyData* poly) {
     const int nv = static_cast<int>(poly->GetNumberOfPoints());
 
     Rcpp::NumericMatrix vb(4, nv);
@@ -144,7 +144,7 @@ Rcpp::List rvespa::vtk_to_pointcloud(vtkPolyData* poly) {
 }
 
 // vtkImageData → R list(dims, spacing, origin, values)
-Rcpp::List rvespa::vtk_imagedata_to_r(vtkImageData* img) {
+Rcpp::List vespa::vtk_imagedata_to_r(vtkImageData* img) {
     int dims[3];
     img->GetDimensions(dims);
 
@@ -172,7 +172,7 @@ Rcpp::List rvespa::vtk_imagedata_to_r(vtkImageData* img) {
 }
 
 // vtkPolyData (2D triangles) → list of 4×2 closed ring matrices (for sf)
-Rcpp::List rvespa::vtk_to_triangle_rings(vtkPolyData* poly) {
+Rcpp::List vespa::vtk_to_triangle_rings(vtkPolyData* poly) {
     const vtkIdType nf = poly->GetNumberOfCells();
     Rcpp::List rings(static_cast<int>(nf));
     vtkNew<vtkIdList> idList;
@@ -194,7 +194,7 @@ Rcpp::List rvespa::vtk_to_triangle_rings(vtkPolyData* poly) {
 }
 
 // 1-based integer IDs → vtkSelection (0-based internally)
-vtkSmartPointer<vtkSelection> rvespa::ids_to_vtk_selection(
+vtkSmartPointer<vtkSelection> vespa::ids_to_vtk_selection(
     const Rcpp::IntegerVector& ids, bool field_is_point)
 {
     vtkNew<vtkIdTypeArray> arr;
@@ -217,39 +217,39 @@ vtkSmartPointer<vtkSelection> rvespa::ids_to_vtk_selection(
 
 // VTK error observer callback
 static void vtk_error_cb(vtkObject*, unsigned long, void* cd, void* calldata) {
-    auto* ctx = static_cast<rvespa::VtkError*>(cd);
+    auto* ctx = static_cast<vespa::VtkError*>(cd);
     ctx->occurred = true;
     if (calldata)
         ctx->message = static_cast<const char*>(calldata);
 }
 
-unsigned long rvespa::install_error_observer(vtkObject* obj, VtkError& ctx) {
+unsigned long vespa::install_error_observer(vtkObject* obj, VtkError& ctx) {
     vtkNew<vtkCallbackCommand> cb;
     cb->SetCallback(vtk_error_cb);
     cb->SetClientData(&ctx);
     return obj->AddObserver(vtkCommand::ErrorEvent, cb);
 }
 
-void rvespa::check_vtk_error(const VtkError& err, const char* filter_name) {
+void vespa::check_vtk_error(const VtkError& err, const char* filter_name) {
     if (err.occurred)
         Rcpp::stop(std::string(filter_name) + ": " + err.message);
 }
 
 // VTK warning observer
 static void vtk_warning_cb(vtkObject*, unsigned long, void* cd, void* calldata) {
-    auto* ctx = static_cast<rvespa::VtkWarnings*>(cd);
+    auto* ctx = static_cast<vespa::VtkWarnings*>(cd);
     if (calldata)
         ctx->messages.push_back(static_cast<const char*>(calldata));
 }
 
-unsigned long rvespa::install_warning_observer(vtkObject* obj, VtkWarnings& ctx) {
+unsigned long vespa::install_warning_observer(vtkObject* obj, VtkWarnings& ctx) {
     vtkNew<vtkCallbackCommand> cb;
     cb->SetCallback(vtk_warning_cb);
     cb->SetClientData(&ctx);
     return obj->AddObserver(vtkCommand::WarningEvent, cb);
 }
 
-void rvespa::emit_vtk_warnings(const VtkWarnings& w) {
+void vespa::emit_vtk_warnings(const VtkWarnings& w) {
     for (const auto& msg : w.messages)
         Rcpp::warning(msg);
 }
@@ -257,6 +257,6 @@ void rvespa::emit_vtk_warnings(const VtkWarnings& w) {
 // Round-trip test helper
 // [[Rcpp::export]]
 Rcpp::List rcpp_roundtrip(Rcpp::List mesh) {
-    auto poly = rvespa::mesh3d_to_vtk(mesh);
-    return rvespa::vtk_to_mesh3d(poly);
+    auto poly = vespa::mesh3d_to_vtk(mesh);
+    return vespa::vtk_to_mesh3d(poly);
 }

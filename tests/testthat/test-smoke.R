@@ -1,6 +1,6 @@
 test_that("mesh3d → vtkPolyData → mesh3d round-trip is identity", {
   tet <- make_tet_mesh3d()
-  result <- rvespa:::rcpp_roundtrip(tet)
+  result <- vespa:::rcpp_roundtrip(tet)
 
   expect_s3_class(result, "mesh3d")
   expect_equal(ncol(result$vb), ncol(tet$vb))  # vertex count preserved
@@ -11,6 +11,6 @@ test_that("mesh3d → vtkPolyData → mesh3d round-trip is identity", {
 
 test_that("round-trip preserves w=1 in homogeneous column", {
   tet <- make_tet_mesh3d()
-  result <- rvespa:::rcpp_roundtrip(tet)
+  result <- vespa:::rcpp_roundtrip(tet)
   expect_true(all(result$vb[4, ] == 1))
 })

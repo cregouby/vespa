@@ -6,7 +6,7 @@
 #include <vtkSelection.h>
 #include <vtkSmartPointer.h>
 
-namespace rvespa {
+namespace vespa {
 
 // mesh3d ($vb 4×N double, $it 3×M int, 1-based) → vtkPolyData (with cells)
 vtkSmartPointer<vtkPolyData> mesh3d_to_vtk(const Rcpp::List& mesh);
@@ -47,4 +47,4 @@ struct VtkWarnings {
 unsigned long install_warning_observer(vtkObject* obj, VtkWarnings& ctx);
 void emit_vtk_warnings(const VtkWarnings& w);
 
-} // namespace rvespa
+} // namespace vespa

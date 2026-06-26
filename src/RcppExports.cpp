@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // rcpp_roundtrip
 Rcpp::List rcpp_roundtrip(Rcpp::List mesh);
-RcppExport SEXP _rvespa_rcpp_roundtrip(SEXP meshSEXP) {
+RcppExport SEXP _vespa_rcpp_roundtrip(SEXP meshSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -23,7 +23,7 @@ END_RCPP
 }
 // rcpp_delaunay2
 Rcpp::List rcpp_delaunay2(Rcpp::NumericMatrix points, Rcpp::Nullable<Rcpp::IntegerMatrix> constraint_edges);
-RcppExport SEXP _rvespa_rcpp_delaunay2(SEXP pointsSEXP, SEXP constraint_edgesSEXP) {
+RcppExport SEXP _vespa_rcpp_delaunay2(SEXP pointsSEXP, SEXP constraint_edgesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -35,7 +35,7 @@ END_RCPP
 }
 // rcpp_alpha_wrap
 Rcpp::List rcpp_alpha_wrap(Rcpp::List mesh, double alpha, double offset, bool absolute_thresholds, bool update_attributes);
-RcppExport SEXP _rvespa_rcpp_alpha_wrap(SEXP meshSEXP, SEXP alphaSEXP, SEXP offsetSEXP, SEXP absolute_thresholdsSEXP, SEXP update_attributesSEXP) {
+RcppExport SEXP _vespa_rcpp_alpha_wrap(SEXP meshSEXP, SEXP alphaSEXP, SEXP offsetSEXP, SEXP absolute_thresholdsSEXP, SEXP update_attributesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -50,7 +50,7 @@ END_RCPP
 }
 // rcpp_mesh_smooth
 Rcpp::List rcpp_mesh_smooth(Rcpp::List mesh, unsigned int method, unsigned int n_iterations, bool safety_constraints, bool update_attributes);
-RcppExport SEXP _rvespa_rcpp_mesh_smooth(SEXP meshSEXP, SEXP methodSEXP, SEXP n_iterationsSEXP, SEXP safety_constraintsSEXP, SEXP update_attributesSEXP) {
+RcppExport SEXP _vespa_rcpp_mesh_smooth(SEXP meshSEXP, SEXP methodSEXP, SEXP n_iterationsSEXP, SEXP safety_constraintsSEXP, SEXP update_attributesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -65,7 +65,7 @@ END_RCPP
 }
 // rcpp_subdivide
 Rcpp::List rcpp_subdivide(Rcpp::List mesh, int subdivision_type, unsigned int n_iterations, bool update_attributes);
-RcppExport SEXP _rvespa_rcpp_subdivide(SEXP meshSEXP, SEXP subdivision_typeSEXP, SEXP n_iterationsSEXP, SEXP update_attributesSEXP) {
+RcppExport SEXP _vespa_rcpp_subdivide(SEXP meshSEXP, SEXP subdivision_typeSEXP, SEXP n_iterationsSEXP, SEXP update_attributesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -79,7 +79,7 @@ END_RCPP
 }
 // rcpp_shape_smooth
 Rcpp::List rcpp_shape_smooth(Rcpp::List mesh, unsigned int n_iterations, double time_step, bool update_attributes);
-RcppExport SEXP _rvespa_rcpp_shape_smooth(SEXP meshSEXP, SEXP n_iterationsSEXP, SEXP time_stepSEXP, SEXP update_attributesSEXP) {
+RcppExport SEXP _vespa_rcpp_shape_smooth(SEXP meshSEXP, SEXP n_iterationsSEXP, SEXP time_stepSEXP, SEXP update_attributesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -93,7 +93,7 @@ END_RCPP
 }
 // rcpp_mesh_check
 Rcpp::List rcpp_mesh_check(Rcpp::List mesh, bool check_watertight, bool check_intersect, bool attempt_repair);
-RcppExport SEXP _rvespa_rcpp_mesh_check(SEXP meshSEXP, SEXP check_watertightSEXP, SEXP check_intersectSEXP, SEXP attempt_repairSEXP) {
+RcppExport SEXP _vespa_rcpp_mesh_check(SEXP meshSEXP, SEXP check_watertightSEXP, SEXP check_intersectSEXP, SEXP attempt_repairSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -107,7 +107,7 @@ END_RCPP
 }
 // rcpp_isotropic_remesh
 Rcpp::List rcpp_isotropic_remesh(Rcpp::List mesh, double target_length, double protect_angle, int n_iterations, bool update_attributes);
-RcppExport SEXP _rvespa_rcpp_isotropic_remesh(SEXP meshSEXP, SEXP target_lengthSEXP, SEXP protect_angleSEXP, SEXP n_iterationsSEXP, SEXP update_attributesSEXP) {
+RcppExport SEXP _vespa_rcpp_isotropic_remesh(SEXP meshSEXP, SEXP target_lengthSEXP, SEXP protect_angleSEXP, SEXP n_iterationsSEXP, SEXP update_attributesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -122,7 +122,7 @@ END_RCPP
 }
 // rcpp_boolean_op
 Rcpp::List rcpp_boolean_op(Rcpp::List mesh_a, Rcpp::List mesh_b, int operation, bool update_attributes);
-RcppExport SEXP _rvespa_rcpp_boolean_op(SEXP mesh_aSEXP, SEXP mesh_bSEXP, SEXP operationSEXP, SEXP update_attributesSEXP) {
+RcppExport SEXP _vespa_rcpp_boolean_op(SEXP mesh_aSEXP, SEXP mesh_bSEXP, SEXP operationSEXP, SEXP update_attributesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -136,7 +136,7 @@ END_RCPP
 }
 // rcpp_patch_fill
 Rcpp::List rcpp_patch_fill(Rcpp::List mesh, Rcpp::IntegerVector point_ids, int fairing_continuity, bool update_attributes);
-RcppExport SEXP _rvespa_rcpp_patch_fill(SEXP meshSEXP, SEXP point_idsSEXP, SEXP fairing_continuitySEXP, SEXP update_attributesSEXP) {
+RcppExport SEXP _vespa_rcpp_patch_fill(SEXP meshSEXP, SEXP point_idsSEXP, SEXP fairing_continuitySEXP, SEXP update_attributesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -150,7 +150,7 @@ END_RCPP
 }
 // rcpp_region_fair
 Rcpp::List rcpp_region_fair(Rcpp::List mesh, Rcpp::IntegerVector point_ids, bool update_attributes);
-RcppExport SEXP _rvespa_rcpp_region_fair(SEXP meshSEXP, SEXP point_idsSEXP, SEXP update_attributesSEXP) {
+RcppExport SEXP _vespa_rcpp_region_fair(SEXP meshSEXP, SEXP point_idsSEXP, SEXP update_attributesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -163,7 +163,7 @@ END_RCPP
 }
 // rcpp_mesh_deform
 Rcpp::List rcpp_mesh_deform(Rcpp::List mesh, Rcpp::IntegerVector control_ids, Rcpp::NumericMatrix target_coords, Rcpp::IntegerVector roi_ids, int mode, double sre_alpha, unsigned int n_iterations, double tolerance);
-RcppExport SEXP _rvespa_rcpp_mesh_deform(SEXP meshSEXP, SEXP control_idsSEXP, SEXP target_coordsSEXP, SEXP roi_idsSEXP, SEXP modeSEXP, SEXP sre_alphaSEXP, SEXP n_iterationsSEXP, SEXP toleranceSEXP) {
+RcppExport SEXP _vespa_rcpp_mesh_deform(SEXP meshSEXP, SEXP control_idsSEXP, SEXP target_coordsSEXP, SEXP roi_idsSEXP, SEXP modeSEXP, SEXP sre_alphaSEXP, SEXP n_iterationsSEXP, SEXP toleranceSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -179,9 +179,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_sdf
+Rcpp::List rcpp_sdf(Rcpp::List mesh, unsigned int base_resolution, int padding);
+RcppExport SEXP _vespa_rcpp_sdf(SEXP meshSEXP, SEXP base_resolutionSEXP, SEXP paddingSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type mesh(meshSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type base_resolution(base_resolutionSEXP);
+    Rcpp::traits::input_parameter< int >::type padding(paddingSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_sdf(mesh, base_resolution, padding));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_pca_normals
 Rcpp::List rcpp_pca_normals(Rcpp::List mesh, unsigned int n_neighbors, bool orient, bool delete_unoriented);
-RcppExport SEXP _rvespa_rcpp_pca_normals(SEXP meshSEXP, SEXP n_neighborsSEXP, SEXP orientSEXP, SEXP delete_unorientedSEXP) {
+RcppExport SEXP _vespa_rcpp_pca_normals(SEXP meshSEXP, SEXP n_neighborsSEXP, SEXP orientSEXP, SEXP delete_unorientedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -195,7 +208,7 @@ END_RCPP
 }
 // rcpp_read_points
 Rcpp::List rcpp_read_points(std::string filename);
-RcppExport SEXP _rvespa_rcpp_read_points(SEXP filenameSEXP) {
+RcppExport SEXP _vespa_rcpp_read_points(SEXP filenameSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -206,7 +219,7 @@ END_RCPP
 }
 // rcpp_poisson_recon
 Rcpp::List rcpp_poisson_recon(Rcpp::List mesh, double min_angle, double max_size, double distance, bool gen_normals);
-RcppExport SEXP _rvespa_rcpp_poisson_recon(SEXP meshSEXP, SEXP min_angleSEXP, SEXP max_sizeSEXP, SEXP distanceSEXP, SEXP gen_normalsSEXP) {
+RcppExport SEXP _vespa_rcpp_poisson_recon(SEXP meshSEXP, SEXP min_angleSEXP, SEXP max_sizeSEXP, SEXP distanceSEXP, SEXP gen_normalsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -221,7 +234,7 @@ END_RCPP
 }
 // rcpp_advancing_front
 Rcpp::List rcpp_advancing_front(Rcpp::List mesh, double per, double radius_ratio_bound);
-RcppExport SEXP _rvespa_rcpp_advancing_front(SEXP meshSEXP, SEXP perSEXP, SEXP radius_ratio_boundSEXP) {
+RcppExport SEXP _vespa_rcpp_advancing_front(SEXP meshSEXP, SEXP perSEXP, SEXP radius_ratio_boundSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -234,7 +247,7 @@ END_RCPP
 }
 // rcpp_vtk_available
 bool rcpp_vtk_available();
-RcppExport SEXP _rvespa_rcpp_vtk_available() {
+RcppExport SEXP _vespa_rcpp_vtk_available() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -244,27 +257,28 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_rvespa_rcpp_roundtrip", (DL_FUNC) &_rvespa_rcpp_roundtrip, 1},
-    {"_rvespa_rcpp_delaunay2", (DL_FUNC) &_rvespa_rcpp_delaunay2, 2},
-    {"_rvespa_rcpp_alpha_wrap", (DL_FUNC) &_rvespa_rcpp_alpha_wrap, 5},
-    {"_rvespa_rcpp_mesh_smooth", (DL_FUNC) &_rvespa_rcpp_mesh_smooth, 5},
-    {"_rvespa_rcpp_subdivide", (DL_FUNC) &_rvespa_rcpp_subdivide, 4},
-    {"_rvespa_rcpp_shape_smooth", (DL_FUNC) &_rvespa_rcpp_shape_smooth, 4},
-    {"_rvespa_rcpp_mesh_check", (DL_FUNC) &_rvespa_rcpp_mesh_check, 4},
-    {"_rvespa_rcpp_isotropic_remesh", (DL_FUNC) &_rvespa_rcpp_isotropic_remesh, 5},
-    {"_rvespa_rcpp_boolean_op", (DL_FUNC) &_rvespa_rcpp_boolean_op, 4},
-    {"_rvespa_rcpp_patch_fill", (DL_FUNC) &_rvespa_rcpp_patch_fill, 4},
-    {"_rvespa_rcpp_region_fair", (DL_FUNC) &_rvespa_rcpp_region_fair, 3},
-    {"_rvespa_rcpp_mesh_deform", (DL_FUNC) &_rvespa_rcpp_mesh_deform, 8},
-    {"_rvespa_rcpp_pca_normals", (DL_FUNC) &_rvespa_rcpp_pca_normals, 4},
-    {"_rvespa_rcpp_read_points", (DL_FUNC) &_rvespa_rcpp_read_points, 1},
-    {"_rvespa_rcpp_poisson_recon", (DL_FUNC) &_rvespa_rcpp_poisson_recon, 5},
-    {"_rvespa_rcpp_advancing_front", (DL_FUNC) &_rvespa_rcpp_advancing_front, 3},
-    {"_rvespa_rcpp_vtk_available", (DL_FUNC) &_rvespa_rcpp_vtk_available, 0},
+    {"_vespa_rcpp_roundtrip", (DL_FUNC) &_vespa_rcpp_roundtrip, 1},
+    {"_vespa_rcpp_delaunay2", (DL_FUNC) &_vespa_rcpp_delaunay2, 2},
+    {"_vespa_rcpp_alpha_wrap", (DL_FUNC) &_vespa_rcpp_alpha_wrap, 5},
+    {"_vespa_rcpp_mesh_smooth", (DL_FUNC) &_vespa_rcpp_mesh_smooth, 5},
+    {"_vespa_rcpp_subdivide", (DL_FUNC) &_vespa_rcpp_subdivide, 4},
+    {"_vespa_rcpp_shape_smooth", (DL_FUNC) &_vespa_rcpp_shape_smooth, 4},
+    {"_vespa_rcpp_mesh_check", (DL_FUNC) &_vespa_rcpp_mesh_check, 4},
+    {"_vespa_rcpp_isotropic_remesh", (DL_FUNC) &_vespa_rcpp_isotropic_remesh, 5},
+    {"_vespa_rcpp_boolean_op", (DL_FUNC) &_vespa_rcpp_boolean_op, 4},
+    {"_vespa_rcpp_patch_fill", (DL_FUNC) &_vespa_rcpp_patch_fill, 4},
+    {"_vespa_rcpp_region_fair", (DL_FUNC) &_vespa_rcpp_region_fair, 3},
+    {"_vespa_rcpp_mesh_deform", (DL_FUNC) &_vespa_rcpp_mesh_deform, 8},
+    {"_vespa_rcpp_sdf", (DL_FUNC) &_vespa_rcpp_sdf, 3},
+    {"_vespa_rcpp_pca_normals", (DL_FUNC) &_vespa_rcpp_pca_normals, 4},
+    {"_vespa_rcpp_read_points", (DL_FUNC) &_vespa_rcpp_read_points, 1},
+    {"_vespa_rcpp_poisson_recon", (DL_FUNC) &_vespa_rcpp_poisson_recon, 5},
+    {"_vespa_rcpp_advancing_front", (DL_FUNC) &_vespa_rcpp_advancing_front, 3},
+    {"_vespa_rcpp_vtk_available", (DL_FUNC) &_vespa_rcpp_vtk_available, 0},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_rvespa(DllInfo *dll) {
+RcppExport void R_init_vespa(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

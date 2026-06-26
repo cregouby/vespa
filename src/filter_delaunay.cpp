@@ -37,14 +37,14 @@ Rcpp::List rcpp_delaunay2(
     vtkNew<vtkCGALDelaunay2> filter;
     filter->SetInputData(input);
 
-    rvespa::VtkError err;
-    rvespa::install_error_observer(filter, err);
+    vespa::VtkError err;
+    vespa::install_error_observer(filter, err);
     filter->Update();
-    rvespa::check_vtk_error(err, "Delaunay2");
+    vespa::check_vtk_error(err, "Delaunay2");
 
     vtkPolyData* out = filter->GetOutput();
     if (!out || out->GetNumberOfCells() == 0)
         Rcpp::stop("Delaunay2 produced empty output");
 
-    return rvespa::vtk_to_triangle_rings(out);
+    return vespa::vtk_to_triangle_rings(out);
 }

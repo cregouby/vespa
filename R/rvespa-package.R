@@ -3,6 +3,6 @@
 
 ## usethis namespace: start
 #' @importFrom Rcpp sourceCpp
-#' @useDynLib rvespa, .registration = TRUE
+#' @useDynLib vespa, .registration = TRUE
 ## usethis namespace: end
 NULL
