@@ -23,5 +23,5 @@ formats: \code{.las}, \code{.off}, \code{.ply}, \code{.xyz}.
 \examples{
 f <- system.file("testdata", "test_points.xyz", package = "vespa")
 cloud <- read_points_xyz(f)
-cat("Points:", ncol(cloud$vb), "\n")
+print(cloud)
 }

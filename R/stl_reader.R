@@ -11,7 +11,7 @@
 #' @examples
 #' f <- system.file("extdata", "torus.stl", package = "vespa")
 #' mesh <- read_stl(f)
-#' cat("Vertices:", ncol(mesh$vb), "  Faces:", ncol(mesh$it), "\n")
+#' print(mesh)
 read_stl <- function(filename) {
   filename <- as.character(filename)
   if (!file.exists(filename))

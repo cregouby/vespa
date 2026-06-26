@@ -20,5 +20,5 @@ VTK's STL reader.
 \examples{
 f <- system.file("extdata", "torus.stl", package = "vespa")
 mesh <- read_stl(f)
-cat("Vertices:", ncol(mesh$vb), "  Faces:", ncol(mesh$it), "\n")
+print(mesh)
 }

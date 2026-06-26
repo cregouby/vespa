@@ -14,7 +14,7 @@
 #' @examples
 #' f <- system.file("testdata", "test_points.xyz", package = "vespa")
 #' cloud <- read_points_xyz(f)
-#' cat("Points:", ncol(cloud$vb), "\n")
+#' print(cloud)
 read_points_xyz <- function(filename) {
   filename <- as.character(filename)
   if (!file.exists(filename))
