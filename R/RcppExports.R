@@ -57,6 +57,10 @@ rcpp_pca_normals <- function(mesh, n_neighbors = 18L, orient = TRUE, delete_unor
     .Call(`_vespa_rcpp_pca_normals`, mesh, n_neighbors, orient, delete_unoriented)
 }
 
+rcpp_read_vtp <- function(filename) {
+    .Call(`_vespa_rcpp_read_vtp`, filename)
+}
+
 rcpp_read_stl <- function(filename) {
     .Call(`_vespa_rcpp_read_stl`, filename)
 }

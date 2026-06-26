@@ -10,10 +10,11 @@ signed_distance_function(mesh, base_resolution = 64L, padding = 0L)
 \item{mesh}{A \code{mesh3d} object. The mesh should be closed and
 non-self-intersecting for physically meaningful signed distances.}
 
-\item{base_resolution}{Base grid resolution along each axis. Default \code{64L}.}
+\item{base_resolution}{Number of grid nodes along the shortest bounding-box
+axis. Default \code{64L}.}
 
-\item{padding}{Number of voxels of padding to add around the mesh bounding
-box. Default \code{0L}.}
+\item{padding}{Number of voxels of padding added on each side of each axis
+around the mesh bounding box. Default \code{0L}.}
 }
 \value{
 A list with elements:
@@ -21,9 +22,9 @@ A list with elements:
 \item{\code{dims}}{Integer vector of length 3: grid dimensions (nx, ny, nz).}
 \item{\code{spacing}}{Numeric vector of length 3: voxel size in each direction.}
 \item{\code{origin}}{Numeric vector of length 3: world-space origin of the grid.}
-\item{\code{values}}{Numeric vector of length \code{prod(dims)}: signed distances in
-VTK (Fortran-order, x fastest) layout.}
-\item{\code{array}}{3-D array of shape \code{dims} built from \code{values}.}
+\item{\code{array}}{3-D numeric array of shape \code{dims} (x fastest, VTK/Fortran order)
+containing the signed distances. Use \code{as.vector(sdf$array)} to recover
+a flat vector.}
 }
 }
 \description{
@@ -31,11 +32,23 @@ Generates a 3-D signed distance field from a triangulated surface mesh using
 CGAL's signed distance function. Negative values are inside the mesh, positive
 values are outside.
 }
+\note{
+\strong{Grid resolution and cubic voxels.}
+Let \eqn{L_{\min} = \min(L_x, L_y, L_z)} be the shortest bounding-box
+extent. The voxel size is
+\deqn{h = \frac{L_{\min}}{b - 1},}
+where \eqn{b} is \code{base_resolution}. The number of grid nodes along each
+axis is then
+\deqn{N_{\alpha} = \Bigl\lfloor \frac{L_{\alpha}}{h} \Bigr\rceil + 1 + 2\,p,}
+where \eqn{\lfloor\cdot\rceil} denotes rounding to the nearest integer and
+\eqn{p} is \code{padding}. This guarantees that voxels are cubic regardless of
+the mesh aspect ratio.
+}
 \examples{
 \donttest{
 f <- system.file("extdata", "torus.stl", package = "vespa")
 mesh <- read_stl(f)
 sdf  <- signed_distance_function(mesh, base_resolution = 32L)
-range(sdf$values)  # negative inside, positive outside
+range(sdf$array)   # negative inside, positive outside
 }
 }

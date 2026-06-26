@@ -5,6 +5,7 @@
 #include <vtkNew.h>
 #include <vtkPolyData.h>
 #include <vtkSTLReader.h>
+#include <vtkXMLPolyDataReader.h>
 
 // [[Rcpp::export]]
 Rcpp::List rcpp_pca_normals(
@@ -31,6 +32,24 @@ Rcpp::List rcpp_pca_normals(
         Rcpp::stop("PCANormals produced empty output");
 
     return vespa::vtk_to_pointcloud(out);
+}
+
+// [[Rcpp::export]]
+Rcpp::List rcpp_read_vtp(std::string filename)
+{
+    vtkNew<vtkXMLPolyDataReader> reader;
+    reader->SetFileName(filename.c_str());
+
+    vespa::VtkError err;
+    vespa::install_error_observer(reader, err);
+    reader->Update();
+    vespa::check_vtk_error(err, "XMLPolyDataReader");
+
+    vtkPolyData* out = reader->GetOutput();
+    if (!out || out->GetNumberOfPoints() == 0)
+        Rcpp::stop("XMLPolyDataReader produced empty output — check the file path and format");
+
+    return vespa::vtk_to_mesh3d(out);
 }
 
 // [[Rcpp::export]]

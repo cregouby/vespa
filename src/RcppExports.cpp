@@ -206,6 +206,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcpp_read_vtp
+Rcpp::List rcpp_read_vtp(std::string filename);
+RcppExport SEXP _vespa_rcpp_read_vtp(SEXP filenameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type filename(filenameSEXP);
+    rcpp_result_gen = Rcpp::wrap(rcpp_read_vtp(filename));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_read_stl
 Rcpp::List rcpp_read_stl(std::string filename);
 RcppExport SEXP _vespa_rcpp_read_stl(SEXP filenameSEXP) {
@@ -282,6 +293,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_vespa_rcpp_mesh_deform", (DL_FUNC) &_vespa_rcpp_mesh_deform, 8},
     {"_vespa_rcpp_sdf", (DL_FUNC) &_vespa_rcpp_sdf, 3},
     {"_vespa_rcpp_pca_normals", (DL_FUNC) &_vespa_rcpp_pca_normals, 4},
+    {"_vespa_rcpp_read_vtp", (DL_FUNC) &_vespa_rcpp_read_vtp, 1},
     {"_vespa_rcpp_read_stl", (DL_FUNC) &_vespa_rcpp_read_stl, 1},
     {"_vespa_rcpp_read_points", (DL_FUNC) &_vespa_rcpp_read_points, 1},
     {"_vespa_rcpp_poisson_recon", (DL_FUNC) &_vespa_rcpp_poisson_recon, 5},

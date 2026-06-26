@@ -20,5 +20,6 @@ PKG_LIBS = \
   -lvtkFiltersExtraction-@VTK_VERSION_SUFFIX@ \
   -lvtkFiltersGeometry-@VTK_VERSION_SUFFIX@ \
   -lvtkIOGeometry-@VTK_VERSION_SUFFIX@ \
+  -lvtkIOXML-@VTK_VERSION_SUFFIX@ \
   -Wl,-rpath,"@VESPA_LIBDIR@" \
   -Wl,-rpath,"@VTK_LIBDIR@"

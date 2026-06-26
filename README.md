@@ -5,6 +5,10 @@
 
 <!-- badges: start -->
 
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/vespa)](https://CRAN.R-project.org/package=vespa)
 <!-- badges: end -->
 
 **vespa** is an R package providing bindings to the
@@ -65,7 +69,7 @@ rgl::shade3d(deformed, col = "goldenrod")
 
 ``` r
 # install.packages("pak")
-pak::pak("your-org/rvespa")
+pak::pak("cregouby/vespa")
 ```
 
 The package requires VTK \>= 9.0 and CGAL \>= 5.3. Run the `configure`
