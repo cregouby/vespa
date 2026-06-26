@@ -22,7 +22,7 @@
 #'
 #' @return A `mesh3d` object with the deformed surface.
 #' @export
-vespa_mesh_deform <- function(mesh,
+mesh_deformation <- function(mesh,
                               control_ids,
                               target_coords,
                               roi_ids      = integer(0),

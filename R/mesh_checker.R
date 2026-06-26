@@ -17,7 +17,7 @@
 #'   TRUE` and repairs were applied. R warnings are emitted for each issue
 #'   detected.
 #' @export
-vespa_mesh_check <- function(mesh,
+mesh_check <- function(mesh,
                              check_watertight = TRUE,
                              check_intersect  = TRUE,
                              attempt_repair   = FALSE) {

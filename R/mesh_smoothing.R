@@ -14,7 +14,7 @@
 #'
 #' @return A `mesh3d` object with the smoothed surface.
 #' @export
-vespa_mesh_smooth <- function(mesh,
+mesh_smoothing <- function(mesh,
                               method             = c("tangential", "angle_area"),
                               n_iterations       = 10L,
                               safety_constraints = FALSE,

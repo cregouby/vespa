@@ -16,7 +16,7 @@
 #'
 #' @return A `mesh3d` object representing the wrapped surface.
 #' @export
-vespa_alpha_wrap <- function(mesh,
+alpha_wrapping <- function(mesh,
                              alpha               = 5.0,
                              offset              = 3.0,
                              absolute_thresholds = FALSE,

@@ -12,7 +12,7 @@
 #'
 #' @return A `mesh3d` object with the selected region faired.
 #' @export
-vespa_region_fair <- function(mesh,
+region_fairing <- function(mesh,
                               point_ids,
                               update_attributes = TRUE) {
   .validate_mesh3d(mesh)

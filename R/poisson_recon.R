@@ -2,10 +2,10 @@
 #'
 #' Reconstructs a closed triangulated surface from an oriented point cloud using
 #' CGAL's Poisson surface reconstruction algorithm. The input point cloud must
-#' carry estimated normals (e.g., from [vespa_pca_normals()]).
+#' carry estimated normals (e.g., from [pca_estimate_normals()]).
 #'
 #' @param mesh A `mesh3d` object representing a point cloud. Must contain a
-#'   `$normals` field (3×N matrix) produced by [vespa_pca_normals()].
+#'   `$normals` field (3×N matrix) produced by [pca_estimate_normals()].
 #' @param min_angle Minimum triangle angle in the output mesh (degrees). Default
 #'   `20`.
 #' @param max_size Maximum triangle size relative to the average point spacing.
@@ -16,9 +16,9 @@
 #'   `TRUE`.
 #'
 #' @return A `mesh3d` object with the reconstructed surface.
-#' @seealso [vespa_pca_normals()], [vespa_advancing_front()]
+#' @seealso [pca_estimate_normals()], [advancing_front_reconstruction()]
 #' @export
-vespa_poisson_recon <- function(mesh,
+poisson_reconstruction <- function(mesh,
                                 min_angle   = 20,
                                 max_size    = 2,
                                 distance    = 0.375,
@@ -27,7 +27,7 @@ vespa_poisson_recon <- function(mesh,
   if (is.null(mesh$normals))
     cli::cli_abort(
       c("{.arg mesh} must have a {.field $normals} field.",
-        "i" = "Run {.fn vespa_pca_normals} first to estimate normals.")
+        "i" = "Run {.fn pca_estimate_normals} first to estimate normals.")
     )
   rcpp_poisson_recon(
     mesh        = mesh,

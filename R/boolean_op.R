@@ -13,7 +13,7 @@
 #'
 #' @return A `mesh3d` object representing the result of the boolean operation.
 #' @export
-vespa_boolean_op <- function(mesh_a,
+boolean_operation <- function(mesh_a,
                              mesh_b,
                              operation         = c("difference", "intersection", "union"),
                              update_attributes = TRUE) {

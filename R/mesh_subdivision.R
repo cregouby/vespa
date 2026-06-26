@@ -12,7 +12,7 @@
 #'
 #' @return A `mesh3d` object with the subdivided surface.
 #' @export
-vespa_subdivide <- function(mesh,
+mesh_subdivision <- function(mesh,
                             type              = c("sqrt3", "loop",
                                                   "catmull_clark", "doo_sabin"),
                             n_iterations      = 1L,

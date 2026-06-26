@@ -1,6 +1,6 @@
-test_that("vespa_sdf returns expected list structure", {
+test_that("signed_distance_function returns expected list structure", {
   tet <- make_tet_mesh3d()
-  result <- vespa_sdf(tet, base_resolution = 16L)
+  result <- signed_distance_function(tet, base_resolution = 16L)
   expect_type(result, "list")
   expect_named(result, c("dims", "spacing", "origin", "values", "array"),
                ignore.order = TRUE)
@@ -10,28 +10,28 @@ test_that("vespa_sdf returns expected list structure", {
   expect_equal(length(result$values), prod(result$dims))
 })
 
-test_that("vespa_sdf $array dimensions match $dims", {
+test_that("signed_distance_function $array dimensions match $dims", {
   tet <- make_tet_mesh3d()
-  result <- vespa_sdf(tet, base_resolution = 16L)
+  result <- signed_distance_function(tet, base_resolution = 16L)
   expect_equal(dim(result$array), result$dims)
 })
 
-test_that("vespa_sdf respects base_resolution (cubic mesh)", {
+test_that("signed_distance_function respects base_resolution (cubic mesh)", {
   tet <- make_tet_mesh3d()
-  result <- vespa_sdf(tet, base_resolution = 10L)
+  result <- signed_distance_function(tet, base_resolution = 10L)
   expect_true(all(result$dims >= 10L))
 })
 
-test_that("vespa_sdf padding increases grid dimensions", {
+test_that("signed_distance_function padding increases grid dimensions", {
   tet   <- make_tet_mesh3d()
-  r0    <- vespa_sdf(tet, base_resolution = 10L, padding = 0L)
-  r2    <- vespa_sdf(tet, base_resolution = 10L, padding = 2L)
+  r0    <- signed_distance_function(tet, base_resolution = 10L, padding = 0L)
+  r2    <- signed_distance_function(tet, base_resolution = 10L, padding = 2L)
   expect_true(all(r2$dims == r0$dims + 4L))
 })
 
-test_that("vespa_sdf interior point has negative SDF value", {
+test_that("signed_distance_function interior point has negative SDF value", {
   tet    <- make_tet_mesh3d()
-  result <- vespa_sdf(tet, base_resolution = 32L)
+  result <- signed_distance_function(tet, base_resolution = 32L)
   center <- result$origin + result$spacing * (result$dims - 1) / 2
   # find voxel index closest to the centroid
   ix <- round((center[1] - result$origin[1]) / result$spacing[1]) + 1L

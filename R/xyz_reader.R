@@ -11,7 +11,7 @@
 #'   If the file contains normal vectors, they are returned in `$normals`
 #'   (3×N matrix).
 #' @export
-vespa_read_points <- function(filename) {
+read_points_xyz <- function(filename) {
   filename <- as.character(filename)
   if (!file.exists(filename))
     cli::cli_abort("File not found: {.path {filename}}")

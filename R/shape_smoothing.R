@@ -12,7 +12,7 @@
 #'
 #' @return A `mesh3d` object with the smoothed surface.
 #' @export
-vespa_shape_smooth <- function(mesh,
+shape_smoothing <- function(mesh,
                                n_iterations      = 1L,
                                time_step         = 1e-4,
                                update_attributes = TRUE) {

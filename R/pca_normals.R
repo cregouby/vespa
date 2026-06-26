@@ -14,9 +14,9 @@
 #'
 #' @return A `mesh3d` object identical to the input but with an additional
 #'   `$normals` field (3×N numeric matrix, one column per point).
-#' @seealso [vespa_poisson_recon()]
+#' @seealso [poisson_reconstruction()]
 #' @export
-vespa_pca_normals <- function(mesh,
+pca_estimate_normals <- function(mesh,
                               n_neighbors       = 18L,
                               orient            = TRUE,
                               delete_unoriented = TRUE) {

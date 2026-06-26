@@ -12,9 +12,9 @@
 #'   (quality bound). Default `5`.
 #'
 #' @return A `mesh3d` object with the reconstructed surface.
-#' @seealso [vespa_poisson_recon()]
+#' @seealso [poisson_reconstruction()]
 #' @export
-vespa_advancing_front <- function(mesh,
+advancing_front_reconstruction <- function(mesh,
                                   per               = 0,
                                   radius_ratio_bound = 5) {
   .validate_mesh3d(mesh)

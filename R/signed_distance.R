@@ -20,7 +20,7 @@
 #'     \item{`array`}{3-D array of shape `dims` built from `values`.}
 #'   }
 #' @export
-vespa_sdf <- function(mesh,
+signed_distance_function <- function(mesh,
                       base_resolution = 64L,
                       padding         = 0L) {
   res <- rcpp_sdf(mesh,

@@ -12,7 +12,7 @@
 #' @return An `sfc_POLYGON` object (from the \pkg{sf} package) containing one
 #'   triangle polygon per Delaunay triangle.
 #' @export
-vespa_delaunay2 <- function(points, constraints = NULL) {
+delaunay2 <- function(points, constraints = NULL) {
   points <- as.matrix(points)
   if (!is.numeric(points) || ncol(points) != 2L)
     cli::cli_abort("{.arg points} must be a numeric matrix with 2 columns (x, y)")

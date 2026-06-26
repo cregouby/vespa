@@ -15,7 +15,7 @@
 #'
 #' @return A `mesh3d` object with the hole(s) filled.
 #' @export
-vespa_patch_fill <- function(mesh,
+patch_filling <- function(mesh,
                              point_ids          = integer(0),
                              fairing_continuity = 1L,
                              update_attributes  = TRUE) {
