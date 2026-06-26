@@ -13,8 +13,11 @@ Imports:
     Rcpp,
     sf
 Suggests: 
+    knitr,
     rgl,
+    rmarkdown,
     testthat (>= 3.0.0)
 LinkingTo: 
     Rcpp
 Config/testthat/edition: 3
+VignetteBuilder: knitr
