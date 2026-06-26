@@ -18,6 +18,14 @@
 #' @return A `mesh3d` object with the reconstructed surface.
 #' @seealso [pca_estimate_normals()], [advancing_front_reconstruction()]
 #' @export
+#' @examples
+#' \donttest{
+#' f     <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh  <- read_stl(f)
+#' cloud <- mesh; cloud$it <- matrix(integer(0), 3L, 0L)
+#' cloud_n <- pca_estimate_normals(cloud)
+#' result  <- poisson_reconstruction(cloud_n)
+#' }
 poisson_reconstruction <- function(mesh,
                                 min_angle   = 20,
                                 max_size    = 2,

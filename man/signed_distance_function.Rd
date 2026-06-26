@@ -31,3 +31,11 @@ Generates a 3-D signed distance field from a triangulated surface mesh using
 CGAL's signed distance function. Negative values are inside the mesh, positive
 values are outside.
 }
+\examples{
+\donttest{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+sdf  <- signed_distance_function(mesh, base_resolution = 32L)
+range(sdf$values)  # negative inside, positive outside
+}
+}

@@ -34,3 +34,10 @@ A \code{mesh3d} object with the remeshed surface.
 Remeshes a triangulated surface so that all edges approach a uniform target
 length, using CGAL's isotropic remeshing algorithm.
 }
+\examples{
+\donttest{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+result <- isotropic_remeshing(mesh, n_iterations = 1L)
+}
+}

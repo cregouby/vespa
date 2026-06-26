@@ -19,5 +19,6 @@ PKG_LIBS = \
   -lvtkFiltersCore-9.5 \
   -lvtkFiltersExtraction-9.5 \
   -lvtkFiltersGeometry-9.5 \
+  -lvtkIOGeometry-9.5 \
   -Wl,-rpath,"/usr/local/bin/vespa/lib" \
   -Wl,-rpath,"/usr/local/bin/lib"

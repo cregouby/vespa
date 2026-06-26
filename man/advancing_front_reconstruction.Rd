@@ -24,6 +24,14 @@ Reconstructs a triangulated surface from an unoriented point cloud using
 CGAL's advancing front surface reconstruction algorithm. Unlike Poisson
 reconstruction, no normals are required.
 }
+\examples{
+\donttest{
+f     <- system.file("extdata", "torus.stl", package = "vespa")
+mesh  <- read_stl(f)
+cloud <- mesh; cloud$it <- matrix(integer(0), 3L, 0L)
+result <- advancing_front_reconstruction(cloud)
+}
+}
 \seealso{
 \code{\link[=poisson_reconstruction]{poisson_reconstruction()}}
 }

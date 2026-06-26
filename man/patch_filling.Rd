@@ -32,3 +32,8 @@ filling algorithm. When \code{point_ids} is supplied, only the hole whose bounda
 passes through those points is filled; otherwise all detected holes are
 filled.
 }
+\examples{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+result <- patch_filling(mesh)  # no-op: torus has no holes
+}

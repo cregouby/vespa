@@ -12,6 +12,10 @@
 #' @return An `sfc_POLYGON` object (from the \pkg{sf} package) containing one
 #'   triangle polygon per Delaunay triangle.
 #' @export
+#' @examples
+#' pts <- matrix(c(0,0, 1,0, 1,1, 0,1, 0.5,0.5), ncol = 2, byrow = TRUE)
+#' triangles <- delaunay2(pts)
+#' length(triangles)  # number of Delaunay triangles
 delaunay2 <- function(points, constraints = NULL) {
   points <- as.matrix(points)
   if (!is.numeric(points) || ncol(points) != 2L)

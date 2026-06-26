@@ -33,3 +33,10 @@ A \code{mesh3d} object with the smoothed surface.
 Smooths a triangulated surface using CGAL's polygon mesh processing
 smoothing algorithms.
 }
+\examples{
+\donttest{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+smooth <- mesh_smoothing(mesh, method = "tangential", n_iterations = 3L)
+}
+}

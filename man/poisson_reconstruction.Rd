@@ -36,6 +36,15 @@ Reconstructs a closed triangulated surface from an oriented point cloud using
 CGAL's Poisson surface reconstruction algorithm. The input point cloud must
 carry estimated normals (e.g., from \code{\link[=pca_estimate_normals]{pca_estimate_normals()}}).
 }
+\examples{
+\donttest{
+f     <- system.file("extdata", "torus.stl", package = "vespa")
+mesh  <- read_stl(f)
+cloud <- mesh; cloud$it <- matrix(integer(0), 3L, 0L)
+cloud_n <- pca_estimate_normals(cloud)
+result  <- poisson_reconstruction(cloud_n)
+}
+}
 \seealso{
 \code{\link[=pca_estimate_normals]{pca_estimate_normals()}}, \code{\link[=advancing_front_reconstruction]{advancing_front_reconstruction()}}
 }

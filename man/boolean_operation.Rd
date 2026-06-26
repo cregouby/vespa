@@ -30,3 +30,12 @@ Computes the union, intersection, or difference of two closed triangulated
 surface meshes using CGAL's polygon mesh processing boolean operations.
 Both meshes must be closed (watertight) and free of self-intersections.
 }
+\examples{
+\donttest{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh  <- read_stl(f)
+mesh2 <- mesh
+mesh2$vb[1, ] <- mesh2$vb[1, ] + 0.5  # shift copy along X
+result <- boolean_operation(mesh, mesh2, operation = "union")
+}
+}

@@ -29,3 +29,11 @@ A \code{mesh3d} object with the subdivided surface.
 Applies a subdivision scheme to a triangulated surface mesh using CGAL's
 polygon mesh processing subdivision algorithms.
 }
+\examples{
+\donttest{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+sub <- mesh_subdivision(mesh, type = "loop", n_iterations = 1L)
+cat("Faces after subdivision:", ncol(sub$it), "\n")
+}
+}

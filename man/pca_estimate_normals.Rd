@@ -32,6 +32,14 @@ A \code{mesh3d} object identical to the input but with an additional
 Estimates and orients surface normals for an unoriented point cloud using
 CGAL's PCA-based normal estimation algorithm.
 }
+\examples{
+\donttest{
+f     <- system.file("extdata", "torus.stl", package = "vespa")
+mesh  <- read_stl(f)
+cloud <- mesh; cloud$it <- matrix(integer(0), 3L, 0L)
+cloud_n <- pca_estimate_normals(cloud)
+}
+}
 \seealso{
 \code{\link[=poisson_reconstruction]{poisson_reconstruction()}}
 }

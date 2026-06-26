@@ -17,6 +17,10 @@
 #'   TRUE` and repairs were applied. R warnings are emitted for each issue
 #'   detected.
 #' @export
+#' @examples
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' result <- mesh_check(mesh)
 mesh_check <- function(mesh,
                              check_watertight = TRUE,
                              check_intersect  = TRUE,

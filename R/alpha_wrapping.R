@@ -16,6 +16,12 @@
 #'
 #' @return A `mesh3d` object representing the wrapped surface.
 #' @export
+#' @examples
+#' \donttest{
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' wrapped <- alpha_wrapping(mesh, alpha = 0.5, absolute_thresholds = TRUE)
+#' }
 alpha_wrapping <- function(mesh,
                              alpha               = 5.0,
                              offset              = 3.0,

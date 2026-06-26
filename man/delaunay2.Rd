@@ -22,3 +22,8 @@ Computes the Delaunay triangulation of a set of 2D points using CGAL's
 constrained Delaunay algorithm. Optional edge constraints force specific
 edges into the triangulation.
 }
+\examples{
+pts <- matrix(c(0,0, 1,0, 1,1, 0,1, 0.5,0.5), ncol = 2, byrow = TRUE)
+triangles <- delaunay2(pts)
+length(triangles)  # number of Delaunay triangles
+}

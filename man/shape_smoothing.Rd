@@ -29,3 +29,10 @@ A \code{mesh3d} object with the smoothed surface.
 Smooths a triangulated surface while preserving its overall shape, using
 CGAL's mean curvature flow algorithm.
 }
+\examples{
+\donttest{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+result <- shape_smoothing(mesh, n_iterations = 2L)
+}
+}

@@ -12,6 +12,13 @@
 #'
 #' @return A `mesh3d` object with the subdivided surface.
 #' @export
+#' @examples
+#' \donttest{
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' sub <- mesh_subdivision(mesh, type = "loop", n_iterations = 1L)
+#' cat("Faces after subdivision:", ncol(sub$it), "\n")
+#' }
 mesh_subdivision <- function(mesh,
                             type              = c("sqrt3", "loop",
                                                   "catmull_clark", "doo_sabin"),

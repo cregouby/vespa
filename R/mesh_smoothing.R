@@ -14,6 +14,12 @@
 #'
 #' @return A `mesh3d` object with the smoothed surface.
 #' @export
+#' @examples
+#' \donttest{
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' smooth <- mesh_smoothing(mesh, method = "tangential", n_iterations = 3L)
+#' }
 mesh_smoothing <- function(mesh,
                               method             = c("tangential", "angle_area"),
                               n_iterations       = 10L,

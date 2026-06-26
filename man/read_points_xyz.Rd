@@ -20,3 +20,8 @@ If the file contains normal vectors, they are returned in \verb{$normals}
 Reads a point cloud from disk using CGAL's point set reader. Supported
 formats: \code{.las}, \code{.off}, \code{.ply}, \code{.xyz}.
 }
+\examples{
+f <- system.file("testdata", "test_points.xyz", package = "vespa")
+cloud <- read_points_xyz(f)
+cat("Points:", ncol(cloud$vb), "\n")
+}

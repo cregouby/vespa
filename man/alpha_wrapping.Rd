@@ -35,3 +35,10 @@ A \code{mesh3d} object representing the wrapped surface.
 Constructs a 2-manifold, watertight surface mesh from a point cloud or
 triangle soup using CGAL's alpha wrapping algorithm.
 }
+\examples{
+\donttest{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+wrapped <- alpha_wrapping(mesh, alpha = 0.5, absolute_thresholds = TRUE)
+}
+}

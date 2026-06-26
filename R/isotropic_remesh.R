@@ -15,6 +15,12 @@
 #'
 #' @return A `mesh3d` object with the remeshed surface.
 #' @export
+#' @examples
+#' \donttest{
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' result <- isotropic_remeshing(mesh, n_iterations = 1L)
+#' }
 isotropic_remeshing <- function(mesh,
                                    target_length     = -1.0,
                                    protect_angle     = 45.0,

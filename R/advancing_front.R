@@ -14,6 +14,13 @@
 #' @return A `mesh3d` object with the reconstructed surface.
 #' @seealso [poisson_reconstruction()]
 #' @export
+#' @examples
+#' \donttest{
+#' f     <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh  <- read_stl(f)
+#' cloud <- mesh; cloud$it <- matrix(integer(0), 3L, 0L)
+#' result <- advancing_front_reconstruction(cloud)
+#' }
 advancing_front_reconstruction <- function(mesh,
                                   per               = 0,
                                   radius_ratio_bound = 5) {

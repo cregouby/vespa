@@ -20,6 +20,13 @@
 #'     \item{`array`}{3-D array of shape `dims` built from `values`.}
 #'   }
 #' @export
+#' @examples
+#' \donttest{
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' sdf  <- signed_distance_function(mesh, base_resolution = 32L)
+#' range(sdf$values)  # negative inside, positive outside
+#' }
 signed_distance_function <- function(mesh,
                       base_resolution = 64L,
                       padding         = 0L) {

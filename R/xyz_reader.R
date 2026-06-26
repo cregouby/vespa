@@ -11,6 +11,10 @@
 #'   If the file contains normal vectors, they are returned in `$normals`
 #'   (3×N matrix).
 #' @export
+#' @examples
+#' f <- system.file("testdata", "test_points.xyz", package = "vespa")
+#' cloud <- read_points_xyz(f)
+#' cat("Points:", ncol(cloud$vb), "\n")
 read_points_xyz <- function(filename) {
   filename <- as.character(filename)
   if (!file.exists(filename))

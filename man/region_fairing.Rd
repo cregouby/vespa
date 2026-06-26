@@ -23,3 +23,8 @@ Smooths a user-defined region of a triangulated surface mesh using CGAL's
 region fairing algorithm. The region vertices are moved to minimise a
 local fairing energy while the boundary of the region is kept fixed.
 }
+\examples{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+result <- region_fairing(mesh, point_ids = 1:5)
+}

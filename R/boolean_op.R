@@ -13,6 +13,14 @@
 #'
 #' @return A `mesh3d` object representing the result of the boolean operation.
 #' @export
+#' @examples
+#' \donttest{
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh  <- read_stl(f)
+#' mesh2 <- mesh
+#' mesh2$vb[1, ] <- mesh2$vb[1, ] + 0.5  # shift copy along X
+#' result <- boolean_operation(mesh, mesh2, operation = "union")
+#' }
 boolean_operation <- function(mesh_a,
                              mesh_b,
                              operation         = c("difference", "intersection", "union"),

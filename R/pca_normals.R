@@ -16,6 +16,13 @@
 #'   `$normals` field (3×N numeric matrix, one column per point).
 #' @seealso [poisson_reconstruction()]
 #' @export
+#' @examples
+#' \donttest{
+#' f     <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh  <- read_stl(f)
+#' cloud <- mesh; cloud$it <- matrix(integer(0), 3L, 0L)
+#' cloud_n <- pca_estimate_normals(cloud)
+#' }
 pca_estimate_normals <- function(mesh,
                               n_neighbors       = 18L,
                               orient            = TRUE,

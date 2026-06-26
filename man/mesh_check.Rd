@@ -33,3 +33,8 @@ polygon mesh processing algorithms. Issues are reported as R warnings.
 When \code{attempt_repair = TRUE}, Vespa attempts to fix detected problems and
 returns the repaired mesh.
 }
+\examples{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+result <- mesh_check(mesh)
+}

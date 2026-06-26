@@ -15,6 +15,10 @@
 #'
 #' @return A `mesh3d` object with the hole(s) filled.
 #' @export
+#' @examples
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' result <- patch_filling(mesh)  # no-op: torus has no holes
 patch_filling <- function(mesh,
                              point_ids          = integer(0),
                              fairing_continuity = 1L,

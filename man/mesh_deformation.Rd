@@ -47,3 +47,12 @@ specified target positions, propagating the deformation across the surface
 using CGAL's as-rigid-as-possible (ARAP) or smoothed rotation enhanced ARAP
 (SRE-ARAP) algorithms.
 }
+\examples{
+\donttest{
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+orig   <- mesh$vb[1:3, 1]
+target <- matrix(orig + c(0.1, 0, 0), nrow = 1)
+result <- mesh_deformation(mesh, control_ids = 1L, target_coords = target)
+}
+}

@@ -12,6 +12,10 @@
 #'
 #' @return A `mesh3d` object with the selected region faired.
 #' @export
+#' @examples
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' result <- region_fairing(mesh, point_ids = 1:5)
 region_fairing <- function(mesh,
                               point_ids,
                               update_attributes = TRUE) {
