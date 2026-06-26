@@ -1,0 +1,26 @@
+---
+title: "Signed Distance Function"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Signed Distance Function}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(vespa)
+```
+
+Speaking of implicit surface, the Signed Distance Function transforms a close-meshed shape into an implicit surface. In VTK terms, you can transform a PolyData into an ImageData. 
+
+Here, many operations or visualizations are simpler like convoluting your shape with a kernel, having a volumetric render of your object, resampling, etc. You can then reconstruct a mesh using the Contour filter. Choosing an isosurface value different from 0 allows you to grow or shrink the original mesh.
+
+
+a) Initial mesh; b) Shape thickening by choosing an isovalue > 0; c) Shape shrinking by choosing an isovalue < 0

@@ -2,3 +2,12 @@ url: ~
 template:
   bootstrap: 5
 
+development:
+  mode: auto
+
+navbar:
+ structure:
+  left:  [home, examples, reference, news]
+  right: [github]
+ components:
+  articles: ~
