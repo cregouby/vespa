@@ -10,15 +10,17 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  eval = FALSE
 )
 ```
 
 ```{r}
 #| label: setup
 library(vespa)
-
 library(rgl)
+library(tictoc)
+
 dragon_url <- "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/Data/Testing/dragon.vtp"
 dragon_tmp <- tempfile(fileext = ".vtp")
 download.file(dragon_url, dragon_tmp, quiet = TRUE)
@@ -36,15 +38,21 @@ The memory footprint is $O(n^3)$ with n being the `base_resolution`. The `base_r
 
 ```{r}
 #| label: "compute sdf"
-#| echo: TRUE
+
 # a) Original mesh
 dragon <- read_vtp(dragon_tmp)
 
 # Build the SDF volume — result is now an `sdf_volume` object
-tictoc::tic()
+tic()
 dragon_sdf <- signed_distance_function(dragon, base_resolution = 64L, padding = 3L)
-tictoc::toc()
+toc()
+#> 10.43 sec elapsed
 dragon_sdf
+#> <sdf_volume>
+#>   dims:    147 x 70 x 100  (1,029,000 voxels)
+#>   spacing: 0.06429 x 0.06414 x 0.06437
+#>   origin:  (-4.5, -2.02, -2.993)
+#>   values:  [-0.6105, 4.246]
 ```
 
 After the heavy computation of the SDF for 1M points, every transformation is trivial
@@ -66,7 +74,6 @@ Now it is time to see the result :
 
 ```{r}
 #| label: "3D visualization"
-#| eval: false
 #| fig.show: 'hold'
 #| fig.cap: "a) Initial mesh; b) Shape thickening (isovalue > 0); c) Shape shrinking (isovalue < 0)"
 #| out.width: '33%'
