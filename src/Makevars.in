@@ -3,7 +3,8 @@ CXX_STD = CXX17
 PKG_CPPFLAGS = \
   -I"@VTK_INC@" \
   -I"@VESPA_INC@" \
-  -I"@CGAL_INC@"
+  -I"@CGAL_INC@" \
+  @CERES_CFLAGS@
 
 PKG_LIBS = \
   -L"@VESPA_LIBDIR@" \
@@ -21,5 +22,6 @@ PKG_LIBS = \
   -lvtkFiltersGeometry-@VTK_VERSION_SUFFIX@ \
   -lvtkIOGeometry-@VTK_VERSION_SUFFIX@ \
   -lvtkIOXML-@VTK_VERSION_SUFFIX@ \
+  @CERES_LIBS@ \
   -Wl,-rpath,"@VESPA_LIBDIR@" \
   -Wl,-rpath,"@VTK_LIBDIR@"

@@ -74,12 +74,36 @@ rgl::shade3d(deformed, col = "goldenrod")
 
 ## Installation
 
+### Prerequisites
+
+The VESPA C++ library requires VTK >= 9.0 and CGAL >= 5.3. and Ceres. You must install them with your software package manager.
+
+### C++ package installation
+
+Installation of VESPA C++ library shall follow [Vespa Installation Documentation](https://gitlab.kitware.com/vtk/meshing/vespa#vespa).
+We will rely on VESPA being installed in the path `CMAKE_INSTALL_PREFIX` environemnt variable 
+
+
+### R package installation
+
+As soon as VESPA installation path is in the environemnt variable `CMAKE_INSTALL_PREFIX`, then we can provide it to the installation script : 
+
 ```r
-# install.packages("pak")
-pak::pak("cregouby/vespa")
+# install.packages("remotes")
+remotes::install.github("cregouby/vespa", configure.vars = "VESPA_ROOT=$CMAKE_INSTALL_PREFIX")
 ```
 
-The package requires VTK >= 9.0 and CGAL >= 5.3. Run the `configure`
+or from a terminal
+
+
+```shell
+cd vespa
+export VESPA_ROOT=$CMAKE_INSTALL_PREFIX
+R CMD INSTALL .
+```
+
+### R package installation step by step (development)
+Run the `configure`
 script once before building so that `src/Makevars` is generated:
 
 ```sh

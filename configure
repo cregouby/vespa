@@ -1,0 +1,229 @@
+#!/bin/sh
+
+# Function to print installation instructions based on the operating system
+print_install_instructions() {
+  echo ""
+  echo "========================================================================"
+  echo " ERROR: Missing system dependencies for Vespa R package"
+  echo "========================================================================"
+  echo ""
+  echo "This package requires CGAL, VTK 9, Ceres Solver, and the Vespa library."
+  echo ""
+  echo "1. CGAL, VTK, and Ceres can be installed via your package manager:"
+  
+  if [ "$(uname)" = "Darwin" ]; then
+    echo "   On macOS (using Homebrew):"
+    echo "     brew install cgal vtk ceres-solver"
+  elif [ -f /etc/debian_version ] || grep -qi "ubuntu" /etc/issue; then
+    echo "   On Debian / Ubuntu:"
+    echo "     sudo apt-get update"
+    echo "     sudo apt-get install libcgal-dev libvtk9-dev libceres-dev"
+  elif [ -f /etc/redhat-release ] || [ -f /etc/fedora-release ]; then
+    echo "   On Fedora / RHEL / CentOS:"
+    echo "     sudo dnf install CGAL-devel vtk-devel ceres-solver-devel"
+  else
+    echo "   On Linux, install the development packages for CGAL, VTK 9, and Ceres."
+  fi
+
+  echo ""
+  echo "2. Vespa is NOT distributed via standard package managers and must be"
+  echo "   built from source using CMake. Please follow the instructions at:"
+  echo "   https://gitlab.kitware.com/vtk/meshing/vespa"
+  echo ""
+  echo "   Once installed, ensure the configure script can find it by setting"
+  echo "   the VESPA_ROOT environment variable before running R CMD INSTALL:"
+  echo "     VESPA_ROOT=/path/to/vespa R CMD INSTALL ."
+  echo "   or pass it via configure-vars:"
+  echo "     R CMD INSTALL --configure-vars='VESPA_ROOT=/path/to/vespa' ."
+  echo ""
+  echo "========================================================================"
+  echo ""
+}
+
+# --- Check for CGAL ---
+CGAL_INC=""
+if [ -f /usr/include/CGAL/config.h ]; then
+  CGAL_INC="/usr/include"
+elif [ -f /usr/local/include/CGAL/config.h ]; then
+  CGAL_INC="/usr/local/include"
+elif [ -f /opt/homebrew/include/CGAL/config.h ]; then
+  CGAL_INC="/opt/homebrew/include"
+elif command -v pkg-config >/dev/null 2>&1 && pkg-config --exists cgal; then
+  CGAL_INC=$(pkg-config --cflags-only-I cgal | sed 's/-I//g' | awk '{print $1}')
+fi
+
+if [ -z "$CGAL_INC" ]; then
+  echo ">> Checking for CGAL... FAILED."
+  print_install_instructions
+  exit 1
+fi
+echo ">> Checking for CGAL... OK (found in $CGAL_INC)"
+
+# --- Check for VTK ---
+VTK_INC=""
+VTK_LIBDIR=""
+VTK_VERSION_SUFFIX=""
+
+# Try to find VTK 9 via pkg-config with multiple name variants
+if command -v pkg-config >/dev/null 2>&1; then
+  for v in vtk VTK vtk-9.1 VTK-9.1 vtk-9.2 VTK-9.2 vtk-9.3 VTK-9.3 vtk-9.0 VTK-9.0; do
+    if pkg-config --exists $v 2>/dev/null; then
+      VTK_INC=$(pkg-config --cflags-only-I $v | sed 's/-I//g' | tr ' ' '\n' | head -n 1)
+      VTK_LIBDIR=$(pkg-config --libs-only-L $v | sed 's/-L//g' | awk '{print $1}')
+      VTK_VERSION=$(pkg-config --modversion $v 2>/dev/null)
+      VTK_VERSION_SUFFIX=$(echo $VTK_VERSION | cut -d. -f1,2)
+      echo ">> Found VTK via pkg-config module: $v (version $VTK_VERSION)"
+      break
+    fi
+  done
+fi
+
+# Fallback for Debian/Ubuntu where VTK is installed in standard system paths
+if [ -z "$VTK_LIBDIR" ]; then
+  for inc_dir in /usr/include/vtk-9.1 /usr/include/vtk-9.2 /usr/include/vtk-9.3 /usr/include/vtk-9.0 /usr/local/include/vtk-9.1; do
+    if [ -d "$inc_dir" ] && [ -f "$inc_dir/vtkSmartPointer.h" ]; then
+      VTK_INC="$inc_dir"
+      VTK_VERSION_SUFFIX=$(basename "$inc_dir" | sed 's/vtk-//')
+      if [ -d /usr/lib/x86_64-linux-gnu ]; then
+        VTK_LIBDIR="/usr/lib/x86_64-linux-gnu"
+      elif [ -d /usr/lib/aarch64-linux-gnu ]; then
+        VTK_LIBDIR="/usr/lib/aarch64-linux-gnu"
+      else
+        VTK_LIBDIR="/usr/lib"
+      fi
+      echo ">> Found VTK in Debian/Ubuntu standard paths"
+      break
+    fi
+  done
+fi
+
+# Fallback for macOS Homebrew
+if [ -z "$VTK_LIBDIR" ]; then
+  for d in /opt/homebrew/lib /usr/local/lib; do
+    if ls $d/libvtkCommonCore-9.*.dylib >/dev/null 2>&1; then
+      VTK_LIBDIR="$d"
+      VTK_VERSION_SUFFIX=$(ls $d/libvtkCommonCore-9.*.dylib 2>/dev/null | head -n 1 | grep -o '9\.[0-9]')
+      VTK_INC="$d/../include/vtk-$VTK_VERSION_SUFFIX"
+      if [ -L "$VTK_INC" ]; then
+        VTK_INC=$(readlink -f "$VTK_INC" 2>/dev/null || readlink "$VTK_INC")
+      fi
+      echo ">> Found VTK in Homebrew paths"
+      break
+    fi
+  done
+fi
+
+if [ -z "$VTK_LIBDIR" ] || [ -z "$VTK_VERSION_SUFFIX" ]; then
+  echo ">> Checking for VTK 9... FAILED."
+  print_install_instructions
+  exit 1
+fi
+
+if ! ls $VTK_LIBDIR/libvtkCommonCore* >/dev/null 2>&1; then
+  echo ">> Checking for VTK 9... FAILED (libraries not found in $VTK_LIBDIR)."
+  print_install_instructions
+  exit 1
+fi
+
+echo ">> Checking for VTK 9... OK (version $VTK_VERSION_SUFFIX, libs in $VTK_LIBDIR, headers in $VTK_INC)"
+
+# --- Check for Ceres Solver ---
+CERES_CFLAGS=""
+CERES_LIBS=""
+
+# Try pkg-config first (most reliable)
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists ceres 2>/dev/null; then
+  CERES_CFLAGS=$(pkg-config --cflags ceres)
+  CERES_LIBS=$(pkg-config --libs ceres)
+  echo ">> Found Ceres via pkg-config"
+else
+  # Fallback: search for headers and libs in common locations
+  CERES_INC=""
+  CERES_LIBDIR=""
+  
+  for inc_dir in /usr/include /usr/local/include /opt/homebrew/include; do
+    if [ -f "$inc_dir/ceres/ceres.h" ]; then
+      CERES_INC="$inc_dir"
+      CERES_CFLAGS="-I$inc_dir"
+      break
+    fi
+  done
+  
+  for lib_dir in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /usr/lib /usr/local/lib /opt/homebrew/lib; do
+    if ls $lib_dir/libceres.* >/dev/null 2>&1; then
+      CERES_LIBDIR="$lib_dir"
+      CERES_LIBS="-L$lib_dir -lceres"
+      break
+    fi
+  done
+  
+  if [ -n "$CERES_INC" ] && [ -n "$CERES_LIBDIR" ]; then
+    echo ">> Found Ceres in standard paths"
+  fi
+fi
+
+if [ -z "$CERES_LIBS" ]; then
+  echo ">> Checking for Ceres Solver... FAILED."
+  print_install_instructions
+  exit 1
+fi
+
+echo ">> Checking for Ceres Solver... OK"
+
+# --- Check for Vespa ---
+VESPA_INC=""
+VESPA_LIBDIR=""
+
+if [ -n "$VESPA_ROOT" ]; then
+  if [ -d "$VESPA_ROOT/include" ]; then
+    VESPA_INC="$VESPA_ROOT/include"
+  fi
+  if [ -d "$VESPA_ROOT/lib" ]; then
+    VESPA_LIBDIR="$VESPA_ROOT/lib"
+  elif [ -d "$VESPA_ROOT/lib64" ]; then
+    VESPA_LIBDIR="$VESPA_ROOT/lib64"
+  fi
+else
+  for d in /usr/local /opt/vespa $HOME/vespa /opt/homebrew; do
+    if [ -d "$d/include" ] && ls $d/include/vtkCGAL* >/dev/null 2>&1; then
+      VESPA_ROOT="$d"
+      VESPA_INC="$d/include"
+      if [ -d "$d/lib" ]; then
+        VESPA_LIBDIR="$d/lib"
+      elif [ -d "$d/lib64" ]; then
+        VESPA_LIBDIR="$d/lib64"
+      fi
+      break
+    fi
+  done
+fi
+
+if [ -n "$VESPA_LIBDIR" ]; then
+  if ! ls $VESPA_LIBDIR/libvtkCGALAlgorithm* >/dev/null 2>&1; then
+    VESPA_LIBDIR=""
+  fi
+fi
+
+if [ -z "$VESPA_LIBDIR" ]; then
+  echo ">> Checking for Vespa... FAILED."
+  print_install_instructions
+  exit 1
+fi
+
+echo ">> Checking for Vespa... OK (found in $VESPA_ROOT)"
+
+# --- Generate Makevars ---
+echo ">> Generating src/Makevars..."
+
+sed -e "s|@VTK_INC@|${VTK_INC}|" \
+    -e "s|@VESPA_INC@|${VESPA_INC}|" \
+    -e "s|@CGAL_INC@|${CGAL_INC}|" \
+    -e "s|@CERES_CFLAGS@|${CERES_CFLAGS}|" \
+    -e "s|@CERES_LIBS@|${CERES_LIBS}|" \
+    -e "s|@VESPA_LIBDIR@|${VESPA_LIBDIR}|" \
+    -e "s|@VTK_LIBDIR@|${VTK_LIBDIR}|" \
+    -e "s|@VTK_VERSION_SUFFIX@|${VTK_VERSION_SUFFIX}|" \
+    src/Makevars.in > src/Makevars
+
+echo ">> Configuration completed successfully."
+exit 0
