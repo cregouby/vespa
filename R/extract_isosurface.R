@@ -29,24 +29,22 @@ extract_isosurface.sdf_volume <- function(x, isovalue = 0, ...) {
   
   rgl::mesh3d(
     vertices  = result$vb,
-    triangles = result$ib
+    triangles = result$it
   )
 }
 
 #' @rdname extract_isosurface
 #' @export
 extract_isosurface.default <- function(x, isovalue = 0, ...) {
-  # Give a helpful, targeted error message
   if (inherits(x, "mesh3d")) {
-    cli::cli_abort(
-      "`extract_isosurface()` expects a volumetric field (class `sdf_volume`), ",
-      "not a surface mesh.\n",
-      "Did you mean to call `signed_distance_function(mesh)` first?",
-      call. = FALSE
-    )
+    cli::cli_abort(c(
+      "{.fn extract_isosurface} expects a volumetric field of class {.cls sdf_volume},",
+      "not a surface mesh of class {.cls mesh3d}.",
+      "i" = "Did you mean to call {.fn signed_distance_function} first?"
+    ), call. = FALSE)
   }
   cli::cli_abort(
-    "{.fn extract_isosurface()} has no method for objects of class {.class {class(x)}}",
+    "{.fn extract_isosurface} has no method for objects of class {.cls {class(x)}}.",
     call. = FALSE
   )
 }

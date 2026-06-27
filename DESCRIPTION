@@ -1,6 +1,6 @@
 Package: vespa
 Title: R Bindings for the Vespa VTK/CGAL Mesh Processing Library.
-Version: 0.3.0
+Version: 0.4.0
 Authors@R: person("Christophe", "Regouby", role = c("aut", "cre"), email = "christophe.regouby@airbus.com")
 Description: Provides R wrappers for all Vespa filters (isotropic remeshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, and more) via direct Rcpp bindings to the Vespa C++/VTK library.
 License: GPL (>= 3)

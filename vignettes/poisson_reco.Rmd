@@ -3,8 +3,11 @@ title: "Poisson Surface Reconstruction"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Poisson Surface Reconstruction}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r, include = FALSE}
@@ -14,12 +17,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-Poisson surface reconstruction retrieves a closed, watertight surface mesh
-from a point cloud equipped with oriented normals.
+Poisson surface reconstruction retrieves a closed, watertight surface
+mesh from a point cloud equipped with oriented normals.
 
-It operates in an [implicit space](https://en.wikipedia.org/wiki/Implicit_surface):
-it solves a Poisson equation for the indicator function whose gradient best
-matches the input normals, then extracts the zero level-set as a triangle mesh.
+It operates in an [implicit
+space](https://en.wikipedia.org/wiki/Implicit_surface): it solves a
+Poisson equation for the indicator function whose gradient best matches
+the input normals, then extracts the zero level-set as a triangle mesh.
 
 ```{r setup}
 library(vespa)
@@ -30,51 +34,54 @@ download.file(hand_url, hand_tmp, quiet = TRUE)
 
 ## Preparation
 
-The demo uses `hand.vtp` from the VESPA test suite — a dense triangulated
-surface mesh of a human hand (61 082 vertices, 122 160 triangles). We
-deliberately discard the face connectivity and retain only the vertex
-positions, turning the mesh into a raw, unstructured point cloud. This lets
-us run the full reconstruction pipeline: normal estimation with PCA, then
-Poisson reconstruction. The original mesh will serve as ground-truth for the
-visual comparison at the end.
+The demo uses `hand.vtp` from the VESPA test suite — a dense
+triangulated surface mesh of a human hand (61 082 vertices, 122 160
+triangles). We deliberately discard the face connectivity and retain
+only the vertex positions, turning the mesh into a raw, unstructured
+point cloud. This lets us run the full reconstruction pipeline: normal
+estimation with PCA, then Poisson reconstruction. The original mesh will
+serve as ground-truth for the visual comparison at the end.
 
-
-```{r build-pointcloud, eval = can_run}
+```{r build-pointcloud}
 hand_mesh <- read_vtp(hand_tmp)
 print(hand_mesh)
 ```
 
-We then strip the face connectivity to obtain a raw, unstructured point cloud:
+We then strip the face connectivity to obtain a raw, unstructured point
+cloud:
 
-```{r strip-faces, eval = can_run}
+```{r strip-faces}
 hand_pts <- hand_mesh
 hand_pts$it <- matrix(integer(0), 3L, 0L)
 ```
 
 ## Normal estimation
 
-`poisson_reconstruction()` requires oriented normals. If your point cloud has
-none (as is the case here, since we stripped the mesh connectivity and with
-it any per-vertex normal information), use `pca_estimate_normals()`: it fits
-a local plane to the `n_neighbors` nearest neighbours and derives a normal
-from that plane. Setting `orient = TRUE` propagates a consistent orientation
-across the cloud via a minimum spanning tree on the normal graph.
+`poisson_reconstruction()` requires oriented normals. If your point
+cloud has none (as is the case here, since we stripped the mesh
+connectivity and with it any per-vertex normal information), use
+`pca_estimate_normals()`: it fits a local plane to the `n_neighbors`
+nearest neighbours and derives a normal from that plane.
 
-```{r pca-normals, eval = can_run}
+Setting `orient = TRUE` propagates a consistent orientation across the
+cloud via a minimum spanning tree on the normal graph.
+
+```{r pca-normals}
 hand_pts <- pca_estimate_normals(hand_pts, n_neighbors = 18L, orient = TRUE)
 ```
 
 ## Poisson reconstruction
 
-The three key parameters control the density and quality of the output mesh:
+The three key parameters control the density and quality of the output
+mesh:
 
-| Parameter    | Role |
-|---|---|
-| `min_angle`  | Minimum triangle angle (degrees). Higher values give more regular triangles but may increase face count. |
-| `max_size`   | Maximum triangle edge length relative to the local point spacing. Lower values produce finer meshes. |
-| `distance`   | Maximum Hausdorff distance between the output mesh and the implicit surface. Smaller values follow the surface more faithfully. |
+| Parameter | Role |
+|------------------------------------|------------------------------------|
+| `min_angle` | Minimum triangle angle (degrees). Higher values give more regular triangles but may increase face count. |
+| `max_size` | Maximum triangle edge length relative to the local point spacing. Lower values produce finer meshes. |
+| `distance` | Maximum Hausdorff distance between the output mesh and the implicit surface. Smaller values follow the surface more faithfully. |
 
-```{r reconstruct, eval = can_run}
+```{r reconstruct}
 hand_recon <- poisson_reconstruction(
   hand_pts,
   min_angle = 20,
@@ -86,16 +93,18 @@ print(hand_recon)
 
 ## Comparison
 
-```{r compare, eval = can_run}
-cat("Input point cloud :", ncol(hand_pts$vb), "points\n")
-cat("Reconstructed mesh:", ncol(hand_recon$vb), "vertices,",
-    ncol(hand_recon$it), "triangles\n")
+```{r}
+#| label: compare
+#| layout-ncol: 2
+summary(hand_mesh)
+
+summary(hand_recon)
 ```
 
-The Poisson method tends to produce a smooth, slightly blurred reconstruction
-because the implicit solve acts as a low-pass filter. Tightening `distance`
-and `max_size` recovers finer surface details at the cost of a higher face
-count.
+The Poisson method tends to produce a smooth, slightly blurred
+reconstruction because the implicit solve acts as a low-pass filter.
+Tightening `distance` and `max_size` recovers finer surface details at
+the cost of a higher face count.
 
 ```{r rgl-compare, eval = FALSE}
 rgl::mfrow3d(1, 2)
@@ -105,3 +114,5 @@ rgl::next3d()
 rgl::shade3d(hand_recon, col = "tomato")
 rgl::title3d("Poisson reconstruction")
 ```
+
+![](images/clipboard-1924376180.png)

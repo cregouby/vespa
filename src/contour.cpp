@@ -1,7 +1,7 @@
 #include <Rcpp.h>
 #include <vtkSmartPointer.h>
 #include <vtkImageData.h>
-#include <vtkFlyingEdges3D.h>  // ou vtkMarchingCubes.h
+#include <vtkFlyingEdges3D.h> // or vtkMarchingCubes.h
 #include <vtkPolyData.h>
 #include <vtkPointData.h>
 #include <vtkFloatArray.h>
@@ -19,20 +19,17 @@ Rcpp::List extract_isosurface_cpp(Rcpp::NumericVector array,
   image->SetSpacing(spacing[0], spacing[1], spacing[2]);
   image->SetOrigin(origin[0], origin[1], origin[2]);
   
-  // Copy array data (VTK expects Fortran order, which matches R)
-  image->GetPointData()->SetScalars(
-      vtkSmartPointer<vtkFloatArray>::New()
-  );
-  
-  vtkFloatArray* scalars = vtkFloatArray::SafeDownCast(
-    image->GetPointData()->GetScalars()
-  );
+  // Create and populate the scalar array
+  vtkSmartPointer<vtkFloatArray> scalars = vtkSmartPointer<vtkFloatArray>::New();
   scalars->SetNumberOfTuples(array.size());
   for (int i = 0; i < array.size(); i++) {
-    scalars->SetValue(i, array[i]);
+    scalars->SetValue(i, static_cast<float>(array[i]));
   }
   
-  // Extract isosurface using Flying Edges (faster than Marching Cubes)
+  // Attach scalars to the image data
+  image->GetPointData()->SetScalars(scalars);
+  
+  // Extract isosurface using Flying Edges
   vtkSmartPointer<vtkFlyingEdges3D> contour = vtkSmartPointer<vtkFlyingEdges3D>::New();
   contour->SetInputData(image);
   contour->SetValue(0, isovalue);
@@ -57,19 +54,19 @@ Rcpp::List extract_isosurface_cpp(Rcpp::NumericVector array,
     vb(3, i) = 1.0;
   }
   
-  // Triangles (indices start at 0 for R)
+  // Triangles: 3 rows (no marker needed for rgl::mesh3d(triangles=...))
+  Rcpp::IntegerMatrix it(3, n_cells);
   for (int i = 0; i < n_cells; i++) {
     vtkCell* cell = polydata->GetCell(i);
     if (cell->GetNumberOfPoints() == 3) {
-      ib(0, i) = cell->GetPointId(0) + 1;  // R uses 1-based indexing
-      ib(1, i) = cell->GetPointId(1) + 1;
-      ib(2, i) = cell->GetPointId(2) + 1;
-      ib(3, i) = 3;  // Triangle marker
+      it(0, i) = cell->GetPointId(0) + 1;  // 1-based indexing
+      it(1, i) = cell->GetPointId(1) + 1;
+      it(2, i) = cell->GetPointId(2) + 1;
     }
   }
   
   return Rcpp::List::create(
     Rcpp::Named("vb") = vb,
-    Rcpp::Named("ib") = ib
+    Rcpp::Named("it") = it
   );
 }

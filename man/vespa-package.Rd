@@ -8,6 +8,13 @@
 \description{
 Provides R wrappers for all Vespa filters (isotropic remeshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, and more) via direct Rcpp bindings to the Vespa C++/VTK library.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://cregouby.github.io/vespa/}
+}
+
+}
 \author{
 \strong{Maintainer}: Christophe Regouby \email{christophe.regouby@airbus.com}
 

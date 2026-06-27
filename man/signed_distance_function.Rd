@@ -17,7 +17,7 @@ axis. Default \code{64L}.}
 around the mesh bounding box. Default \code{0L}.}
 }
 \value{
-A list with elements:
+An object of class \code{sdf_volume} (a list subclass) with elements:
 \describe{
 \item{\code{dims}}{Integer vector of length 3: grid dimensions (nx, ny, nz).}
 \item{\code{spacing}}{Numeric vector of length 3: voxel size in each direction.}
@@ -26,6 +26,8 @@ A list with elements:
 containing the signed distances. Use \code{as.vector(sdf$array)} to recover
 a flat vector.}
 }
+This object is accepted by \code{\link[=extract_isosurface]{extract_isosurface()}} and has dedicated
+\code{print()} and \code{plot()} methods.
 }
 \description{
 Generates a 3-D signed distance field from a triangulated surface mesh using
@@ -49,6 +51,10 @@ the mesh aspect ratio.
 f <- system.file("extdata", "torus.stl", package = "vespa")
 mesh <- read_stl(f)
 sdf  <- signed_distance_function(mesh, base_resolution = 32L)
-range(sdf$array)   # negative inside, positive outside
+sdf                              # uses print.sdf_volume
+range(sdf$array)                 # negative inside, positive outside
 }
+}
+\seealso{
+\code{\link[=extract_isosurface]{extract_isosurface()}} to extract a \code{mesh3d} from an \code{sdf_volume}.
 }
