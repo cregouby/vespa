@@ -20,8 +20,15 @@ PKG_LIBS = \
   -lvtkFiltersCore-@VTK_VERSION_SUFFIX@ \
   -lvtkFiltersExtraction-@VTK_VERSION_SUFFIX@ \
   -lvtkFiltersGeometry-@VTK_VERSION_SUFFIX@ \
+  -lvtkFiltersGeneral-@VTK_VERSION_SUFFIX@ \
+  -lvtkFiltersModeling-@VTK_VERSION_SUFFIX@ \
+  -lvtkFiltersPoints-@VTK_VERSION_SUFFIX@ \
   -lvtkIOGeometry-@VTK_VERSION_SUFFIX@ \
   -lvtkIOXML-@VTK_VERSION_SUFFIX@ \
+  -lvtkIOCore-@VTK_VERSION_SUFFIX@ \
+  -lvtkIOLegacy-@VTK_VERSION_SUFFIX@ \
+  -lvtkImagingCore-@VTK_VERSION_SUFFIX@ \
+  -lvtkImagingStencil-@VTK_VERSION_SUFFIX@ \
   @CERES_LIBS@ \
   -Wl,-rpath,"@VESPA_LIBDIR@" \
   -Wl,-rpath,"@VTK_LIBDIR@"

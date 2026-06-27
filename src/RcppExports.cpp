@@ -10,6 +10,21 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// extract_isosurface_cpp
+Rcpp::List extract_isosurface_cpp(Rcpp::NumericVector array, Rcpp::IntegerVector dims, Rcpp::NumericVector spacing, Rcpp::NumericVector origin, double isovalue);
+RcppExport SEXP _vespa_extract_isosurface_cpp(SEXP arraySEXP, SEXP dimsSEXP, SEXP spacingSEXP, SEXP originSEXP, SEXP isovalueSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type array(arraySEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type dims(dimsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type spacing(spacingSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type origin(originSEXP);
+    Rcpp::traits::input_parameter< double >::type isovalue(isovalueSEXP);
+    rcpp_result_gen = Rcpp::wrap(extract_isosurface_cpp(array, dims, spacing, origin, isovalue));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_roundtrip
 Rcpp::List rcpp_roundtrip(Rcpp::List mesh);
 RcppExport SEXP _vespa_rcpp_roundtrip(SEXP meshSEXP) {
@@ -279,6 +294,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_vespa_extract_isosurface_cpp", (DL_FUNC) &_vespa_extract_isosurface_cpp, 5},
     {"_vespa_rcpp_roundtrip", (DL_FUNC) &_vespa_rcpp_roundtrip, 1},
     {"_vespa_rcpp_delaunay2", (DL_FUNC) &_vespa_rcpp_delaunay2, 2},
     {"_vespa_rcpp_alpha_wrap", (DL_FUNC) &_vespa_rcpp_alpha_wrap, 5},

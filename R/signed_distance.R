@@ -23,7 +23,7 @@
 #' \eqn{p} is `padding`. This guarantees that voxels are cubic regardless of
 #' the mesh aspect ratio.
 #'
-#' @return A list with elements:
+#' @return An object of class `sdf_volume` (a list subclass) with elements:
 #'   \describe{
 #'     \item{`dims`}{Integer vector of length 3: grid dimensions (nx, ny, nz).}
 #'     \item{`spacing`}{Numeric vector of length 3: voxel size in each direction.}
@@ -32,24 +32,44 @@
 #'       containing the signed distances. Use `as.vector(sdf$array)` to recover
 #'       a flat vector.}
 #'   }
+#'   This object is accepted by [extract_isosurface()] and has dedicated
+#'   `print()` and `plot()` methods.
+#'
+#' @seealso [extract_isosurface()] to extract a `mesh3d` from an `sdf_volume`.
+#'
 #' @export
 #' @examples
 #' \donttest{
 #' f <- system.file("extdata", "torus.stl", package = "vespa")
 #' mesh <- read_stl(f)
 #' sdf  <- signed_distance_function(mesh, base_resolution = 32L)
-#' range(sdf$array)   # negative inside, positive outside
+#' sdf                              # uses print.sdf_volume
+#' range(sdf$array)                 # negative inside, positive outside
 #' }
 signed_distance_function <- function(mesh,
-                      base_resolution = 64L,
-                      padding         = 0L) {
+                                     base_resolution = 64L,
+                                     padding         = 0L) {
+  
+  if (!inherits(mesh, "mesh3d")) {
+    cli::cli_abort("{.arg mesh} must be a {.cls mesh3d} object, not {.obj_type_friendly {mesh}}.")
+  }
+  
   res <- rcpp_sdf(mesh,
                   base_resolution = as.integer(base_resolution),
                   padding         = as.integer(padding))
+  
+  # Reshape flat vector into a 3-D array and rename the field
   dim(res[["values"]]) <- res$dims
   names(res)[match("values", names(res))] <- "array"
+  
+  # Attach the S3 class *before* printing so that print.sdf_volume is used
+  # if the user inspects the object immediately
+  class(res) <- c("sdf_volume", "list")
+  
+  # Informational message 
   nvox      <- prod(res$dims)
   footprint <- format(structure(nvox * 8L, class = "object_size"), units = "auto")
-  cli::cli_inform("SDF grid: {res$dims[1]} × {res$dims[2]} × {res$dims[3]} — {format(nvox, big.mark = ',')} voxels, ~{footprint}")
+  cli::cli_inform("SDF grid: {res$dims[1]} \u00d7 {res$dims[2]} \u00d7 {res$dims[3]} \u2014 {format(nvox, big.mark = ',')} voxels, ~{footprint}")
+  
   res
 }

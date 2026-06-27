@@ -24,6 +24,8 @@ matches the input normals, then extracts the zero level-set as a triangle mesh.
 ```{r setup}
 library(vespa)
 hand_url <- "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/Data/Testing/hand.vtp?ref_type=heads"
+hand_tmp <- tempfile(fileext = ".vtp")
+download.file(hand_url, hand_tmp, quiet = TRUE)
 ```
 
 ## Preparation
@@ -36,16 +38,9 @@ us run the full reconstruction pipeline: normal estimation with PCA, then
 Poisson reconstruction. The original mesh will serve as ground-truth for the
 visual comparison at the end.
 
-```{r download}
-can_run <- tryCatch({
-  tmp <- tempfile(fileext = ".vtp")
-  download.file(hand_url, tmp, quiet = TRUE)
-  TRUE
-}, error = function(e) FALSE)
-```
 
 ```{r build-pointcloud, eval = can_run}
-hand_mesh <- read_vtp(tmp)
+hand_mesh <- read_vtp(hand_tmp)
 print(hand_mesh)
 ```
 

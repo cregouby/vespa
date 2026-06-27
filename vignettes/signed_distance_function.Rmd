@@ -16,11 +16,42 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(vespa)
+dragon_url <- "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/Data/Testing/dragon.vtp"
+dragon_tmp <- tempfile(fileext = ".vtp")
+download.file(dragon_url, dragon_tmp, quiet = TRUE)
 ```
 
 Speaking of implicit surface, the Signed Distance Function transforms a close-meshed shape into an implicit surface. In VTK terms, you can transform a PolyData into an ImageData. 
 
 Here, many operations or visualizations are simpler like convoluting your shape with a kernel, having a volumetric render of your object, resampling, etc. You can then reconstruct a mesh using the Contour filter. Choosing an isosurface value different from 0 allows you to grow or shrink the original mesh.
 
+```{r, fig.show='hold', fig.cap="a) Initial mesh; b) Shape thickening (isovalue > 0); c) Shape shrinking (isovalue < 0)", out.width='33%', echo=TRUE}
+library(rgl)
 
-a) Initial mesh; b) Shape thickening by choosing an isovalue > 0; c) Shape shrinking by choosing an isovalue < 0
+dragon <- read_vtp(dragon_tmp)
+
+# a) Original mesh
+open3d()
+shade3d(dragon, color = "lightblue")
+title3d(main = "a) Original mesh")
+
+# Build the SDF volume — result is now an `sdf_volume` object
+sdf <- signed_distance_function(dragon, base_resolution = 128L, padding = 10L)
+sdf 
+
+# Isovalues expressed in physical units (voxel size)
+iso_thicken <-  3 * sdf$spacing[1]   # outside -> grows
+iso_shrink  <- -3 * sdf$spacing[1]   # inside  -> shrinks
+
+# b) Thickened mesh
+mesh_b <- extract_isosurface(sdf, isovalue = iso_thicken)
+open3d()
+shade3d(mesh_b, color = "lightgreen")
+title3d(main = sprintf("b) Thickened (iso = %.2f)", iso_thicken))
+
+# c) Shrunk mesh
+mesh_c <- extract_isosurface(sdf, isovalue = iso_shrink)
+open3d()
+shade3d(mesh_c, color = "salmon")
+title3d(main = sprintf("c) Shrunk (iso = %.2f)", iso_shrink))
+```

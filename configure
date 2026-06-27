@@ -64,62 +64,100 @@ VTK_INC=""
 VTK_LIBDIR=""
 VTK_VERSION_SUFFIX=""
 
-# Try to find VTK 9 via pkg-config with multiple name variants
+# Helper: try to detect VTK version from a directory name like "vtk-9.6"
+detect_vtk_version_from_dir() {
+  local dir="$1"
+  basename "$dir" | grep -oE '9\.[0-9]+' | head -n 1
+}
+
+# Helper: try pkg-config for a given module name
+try_pkg_config_vtk() {
+  local mod="$1"
+  if pkg-config --exists "$mod" 2>/dev/null; then
+    VTK_INC=$(pkg-config --cflags-only-I "$mod" | sed 's/-I//g' | tr ' ' '\n' | grep -v '^$' | head -n 1)
+    VTK_LIBDIR=$(pkg-config --libs-only-L "$mod" | sed 's/-L//g' | awk '{print $1}')
+    VTK_VERSION=$(pkg-config --modversion "$mod" 2>/dev/null)
+    VTK_VERSION_SUFFIX=$(echo "$VTK_VERSION" | cut -d. -f1,2)
+    echo ">> Found VTK via pkg-config module: $mod (version $VTK_VERSION)"
+    return 0
+  fi
+  return 1
+}
+
+# Step 1: Try pkg-config with common module names
 if command -v pkg-config >/dev/null 2>&1; then
-  for v in vtk VTK vtk-9.1 VTK-9.1 vtk-9.2 VTK-9.2 vtk-9.3 VTK-9.3 vtk-9.0 VTK-9.0; do
-    if pkg-config --exists $v 2>/dev/null; then
-      VTK_INC=$(pkg-config --cflags-only-I $v | sed 's/-I//g' | tr ' ' '\n' | head -n 1)
-      VTK_LIBDIR=$(pkg-config --libs-only-L $v | sed 's/-L//g' | awk '{print $1}')
-      VTK_VERSION=$(pkg-config --modversion $v 2>/dev/null)
-      VTK_VERSION_SUFFIX=$(echo $VTK_VERSION | cut -d. -f1,2)
-      echo ">> Found VTK via pkg-config module: $v (version $VTK_VERSION)"
+  # First try the generic 'vtk' module
+  for mod in vtk VTK; do
+    if try_pkg_config_vtk "$mod"; then
       break
     fi
   done
-fi
-
-# Fallback for Debian/Ubuntu where VTK is installed in standard system paths
-if [ -z "$VTK_LIBDIR" ]; then
-  for inc_dir in /usr/include/vtk-9.1 /usr/include/vtk-9.2 /usr/include/vtk-9.3 /usr/include/vtk-9.0 /usr/local/include/vtk-9.1; do
-    if [ -d "$inc_dir" ] && [ -f "$inc_dir/vtkSmartPointer.h" ]; then
-      VTK_INC="$inc_dir"
-      VTK_VERSION_SUFFIX=$(basename "$inc_dir" | sed 's/vtk-//')
-      if [ -d /usr/lib/x86_64-linux-gnu ]; then
-        VTK_LIBDIR="/usr/lib/x86_64-linux-gnu"
-      elif [ -d /usr/lib/aarch64-linux-gnu ]; then
-        VTK_LIBDIR="/usr/lib/aarch64-linux-gnu"
-      else
-        VTK_LIBDIR="/usr/lib"
+  
+  # If not found, list all available vtk-* modules and pick the newest 9.x
+  if [ -z "$VTK_LIBDIR" ]; then
+    for mod in $(pkg-config --list-all 2>/dev/null | awk '{print $1}' | grep -iE '^vtk-?9' | sort -V -r); do
+      if try_pkg_config_vtk "$mod"; then
+        break
       fi
-      echo ">> Found VTK in Debian/Ubuntu standard paths"
-      break
-    fi
+    done
+  fi
+fi
+
+# Step 2: Fallback — scan common include directories for any vtk-9.x
+if [ -z "$VTK_LIBDIR" ]; then
+  # Allow user override via VTK_ROOT
+  SEARCH_DIRS=""
+  if [ -n "$VTK_ROOT" ]; then
+    SEARCH_DIRS="$VTK_ROOT"
+  fi
+  SEARCH_DIRS="$SEARCH_DIRS /usr/local /opt/homebrew /usr"
+  
+  for base in $SEARCH_DIRS; do
+    # Look for include/vtk-9.x subdirectories
+    for inc_dir in "$base/include"/vtk-9.*; do
+      if [ -d "$inc_dir" ] && [ -f "$inc_dir/vtkSmartPointer.h" ]; then
+        VTK_INC="$inc_dir"
+        VTK_VERSION_SUFFIX=$(detect_vtk_version_from_dir "$inc_dir")
+        
+        # Determine lib directory
+        if [ -d "$base/lib/x86_64-linux-gnu" ]; then
+          VTK_LIBDIR="$base/lib/x86_64-linux-gnu"
+        elif [ -d "$base/lib/aarch64-linux-gnu" ]; then
+          VTK_LIBDIR="$base/lib/aarch64-linux-gnu"
+        elif [ -d "$base/lib64" ]; then
+          VTK_LIBDIR="$base/lib64"
+        elif [ -d "$base/lib" ]; then
+          VTK_LIBDIR="$base/lib"
+        fi
+        echo ">> Found VTK $VTK_VERSION_SUFFIX in $base (headers: $VTK_INC)"
+        break 2
+      fi
+    done
   done
 fi
 
-# Fallback for macOS Homebrew
+# Step 3: Fallback for macOS Homebrew Cellar
 if [ -z "$VTK_LIBDIR" ]; then
-  for d in /opt/homebrew/lib /usr/local/lib; do
+  for d in /opt/homebrew/Cellar/vtk/9.*/lib /usr/local/Cellar/vtk/9.*/lib; do
     if ls $d/libvtkCommonCore-9.*.dylib >/dev/null 2>&1; then
       VTK_LIBDIR="$d"
-      VTK_VERSION_SUFFIX=$(ls $d/libvtkCommonCore-9.*.dylib 2>/dev/null | head -n 1 | grep -o '9\.[0-9]')
-      VTK_INC="$d/../include/vtk-$VTK_VERSION_SUFFIX"
-      if [ -L "$VTK_INC" ]; then
-        VTK_INC=$(readlink -f "$VTK_INC" 2>/dev/null || readlink "$VTK_INC")
-      fi
-      echo ">> Found VTK in Homebrew paths"
+      VTK_VERSION_SUFFIX=$(ls $d/libvtkCommonCore-9.*.dylib 2>/dev/null | head -n 1 | grep -oE '9\.[0-9]+')
+      VTK_INC=$(echo "$d" | sed 's|/lib.*|/include/vtk-'"$VTK_VERSION_SUFFIX"'|')
+      echo ">> Found VTK in Homebrew Cellar"
       break
     fi
   done
 fi
 
+# Final validation
 if [ -z "$VTK_LIBDIR" ] || [ -z "$VTK_VERSION_SUFFIX" ]; then
   echo ">> Checking for VTK 9... FAILED."
   print_install_instructions
   exit 1
 fi
 
-if ! ls $VTK_LIBDIR/libvtkCommonCore* >/dev/null 2>&1; then
+# Verify that at least one VTK library exists
+if ! ls "$VTK_LIBDIR"/libvtkCommonCore* >/dev/null 2>&1; then
   echo ">> Checking for VTK 9... FAILED (libraries not found in $VTK_LIBDIR)."
   print_install_instructions
   exit 1
