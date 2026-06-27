@@ -42,23 +42,27 @@ jobs:
             libboost-all-dev \
             libeigen3-dev
 
-      # Build and install Vespa from source
+      # Cache Vespa build
+      - name: Cache Vespa
+        id: cache-vespa
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/include/vtkCGAL*
+            /usr/local/lib/libvtkCGAL*
+          key: vespa-${{ runner.os }}-${{ hashFiles('.github/vespa-version.txt') }}
+
       - name: Build and install Vespa
+        if: steps.cache-vespa.outputs.cache-hit != 'true'
         run: |
           cd /tmp
           git clone https://gitlab.kitware.com/vtk/meshing/vespa.git
           cd vespa
           mkdir build && cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr/local
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
           make -j$(nproc)
           sudo make install
           
-          # Verify installation
-          ls -la /usr/local/include/vtkCGAL*
-          ls -la /usr/local/lib/libvtkCGAL*
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::pkgdown, local::.
