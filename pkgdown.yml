@@ -1,0 +1,10 @@
+pandoc: 3.8.3
+pkgdown: 2.2.0
+pkgdown_sha: ~
+articles:
+  poisson_reco: poisson_reco.html
+  signed_distance_function: signed_distance_function.html
+last_built: 2026-06-27T18:09Z
+urls:
+  reference: https://cregouby.github.io/vespa/reference
+  article: https://cregouby.github.io/vespa/articles
