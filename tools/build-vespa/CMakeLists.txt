@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.19)
 project(VespaBuild NONE)
 
 include(ExternalProject)
@@ -9,9 +9,16 @@ set(INSTALL_PREFIX "${CMAKE_BINARY_DIR}/vespa-install"
     CACHE PATH "Destination directory for Vespa headers and libraries")
 
 # Git tag or commit read from .github/vespa-version.txt and forwarded by configure.
-# Default is the official v1.0 release tag; override with -DVESPA_GIT_TAG=<hash>.
 set(VESPA_GIT_TAG "v1.0"
     CACHE STRING "Vespa git tag or commit hash to build")
+
+# Detect whether the tag looks like a raw hash (shallow clone only works with named refs).
+string(LENGTH "${VESPA_GIT_TAG}" _tag_len)
+if(_tag_len GREATER 15 AND "${VESPA_GIT_TAG}" MATCHES "^[0-9a-f]+$")
+  set(_git_shallow FALSE)
+else()
+  set(_git_shallow TRUE)
+endif()
 
 # Forward the compilers chosen by R's toolchain so the ABI matches.
 if(DEFINED ENV{CC})
@@ -24,9 +31,15 @@ endif()
 ExternalProject_Add(vespa
   GIT_REPOSITORY "https://gitlab.kitware.com/vtk/meshing/vespa.git"
   GIT_TAG        "${VESPA_GIT_TAG}"
-  # Tags support shallow clone; raw hashes do not
-  GIT_SHALLOW    TRUE
+  GIT_SHALLOW    ${_git_shallow}
   GIT_PROGRESS   TRUE
+
+  # Eigen 5 (Homebrew 2025+) is API-compatible with 3.x but its cmake config
+  # rejects find_package(Eigen3 3.2.0). Widen the version range so both work.
+  PATCH_COMMAND
+    sed -i.bak
+      "s|find_package(Eigen3 3\\.2\\.0|find_package(Eigen3 3.2.0...5.99.0|g"
+      <SOURCE_DIR>/CMakeLists.txt
 
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
@@ -34,7 +47,7 @@ ExternalProject_Add(vespa
     ${_CC_ARG}
     ${_CXX_ARG}
 
-  # Parallel build — honour MAKEFLAGS / NPROC if set, else auto-detect
+  # Parallel build
   BUILD_COMMAND
     ${CMAKE_COMMAND} --build <BINARY_DIR>
     --config Release
@@ -48,6 +61,3 @@ ExternalProject_Add(vespa
   LOG_BUILD     FALSE
   LOG_INSTALL   FALSE
 )
-
-# Convenience target name matching what configure invokes
-add_custom_target(vespa-install DEPENDS vespa)
