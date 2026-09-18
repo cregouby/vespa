@@ -34,7 +34,7 @@ tmp <- tempfile(fileext = ".vtp")
 download.file(url, tmp, quiet = TRUE)
 mesh <- read_vtp(tmp)
 #> Error: XMLPolyDataReader: ERROR: In ./IO/XML/vtkXMLReader.cxx, line 521
-#> vtkXMLPolyDataReader (0x55aa576e4bd0): Error parsing input file.  ReadXMLInformation aborting.
+#> vtkXMLPolyDataReader (0x55e88284cba0): Error parsing input file.  ReadXMLInformation aborting.
 #> 
 print(mesh)
 #> Error: object 'mesh' not found
