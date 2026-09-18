@@ -242,6 +242,57 @@ if [ -n "$VESPA_LIBDIR" ]; then
   fi
 fi
 
+# --- Auto-build Vespa from source if not found ---
+auto_build_vespa() {
+  PKG_SRC="$(pwd)"
+  INST_DIR="${PKG_SRC}/inst/vespa"
+  BUILD_DIR="$(mktemp -d)"
+
+  echo ">> Vespa not found on the system."
+  echo ">> Attempting automatic build into ${INST_DIR} ..."
+
+  if ! command -v cmake >/dev/null 2>&1; then
+    echo ">> cmake is required for automatic Vespa build but was not found."
+    return 1
+  fi
+  if ! command -v git >/dev/null 2>&1; then
+    echo ">> git is required for automatic Vespa build but was not found."
+    return 1
+  fi
+
+  # Read git tag/hash from the single source of truth
+  VESPA_GIT_TAG="v1.0"
+  VERSION_FILE="${PKG_SRC}/.github/vespa-version.txt"
+  if [ -f "$VERSION_FILE" ]; then
+    VESPA_GIT_TAG="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
+  fi
+
+  echo ">> Building Vespa ${VESPA_GIT_TAG} (this may take several minutes) ..."
+
+  cmake -S "${PKG_SRC}/tools/build-vespa" \
+        -B "$BUILD_DIR" \
+        -DINSTALL_PREFIX="$INST_DIR" \
+        -DVESPA_GIT_TAG="$VESPA_GIT_TAG" \
+        -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build "$BUILD_DIR"
+
+  STATUS=$?
+  rm -rf "$BUILD_DIR"
+  return $STATUS
+}
+
+if [ -z "$VESPA_LIBDIR" ]; then
+  if auto_build_vespa; then
+    VESPA_ROOT="$(pwd)/inst/vespa"
+    VESPA_INC="$VESPA_ROOT/include"
+    if [ -d "$VESPA_ROOT/lib" ]; then
+      VESPA_LIBDIR="$VESPA_ROOT/lib"
+    elif [ -d "$VESPA_ROOT/lib64" ]; then
+      VESPA_LIBDIR="$VESPA_ROOT/lib64"
+    fi
+  fi
+fi
+
 if [ -z "$VESPA_LIBDIR" ]; then
   echo ">> Checking for Vespa... FAILED."
   print_install_instructions
