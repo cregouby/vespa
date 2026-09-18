@@ -38,9 +38,11 @@ ExternalProject_Add(vespa
   # rejects find_package(Eigen3 3.2.0). Widen the version range so both work.
   PATCH_COMMAND
     sed -i.bak
-      "s|find_package(Eigen3 3\\.2\\.0|find_package(Eigen3 3.2.0...5.99.0|g"
-      <SOURCE_DIR>/CMakeLists.txt
-
+      -e "s|find_package(Eigen3 3\\.2\\.0 REQUIRED|find_package(Eigen3 REQUIRED|g"
+      -e "s|find_package(CGAL 5\\.3\\.0 REQUIRED|find_package(CGAL REQUIRED|g"
+      <SOURCE_DIR>/CMakeLists.txt &&
+    ${CMAKE_COMMAND} -E rm -f <SOURCE_DIR>/CMakeLists.txt.bak
+    
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
