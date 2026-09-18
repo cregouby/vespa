@@ -1,4 +1,4 @@
-# vespa (development version)
+# vespa 0.5.0
 
 * Add BUILD vespa lib capability.
 
