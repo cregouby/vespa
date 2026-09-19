@@ -1,3 +1,7 @@
+# vespa 0.5.0
+
+* Add BUILD vespa lib capability.
+
 # vespa 0.4.0
 
 * Add `extract_isosurface()` for `sdf_volume` objects.

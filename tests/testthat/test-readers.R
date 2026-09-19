@@ -1,7 +1,7 @@
-tet_vtp <- system.file("testdata", "tet.vtp", package = "vespa")
+sphere_vtp <- system.file("testdata", "sphere_open.vtp", package = "vespa")
 
 test_that("read_vtp returns a mesh3d with correct structure", {
-  mesh <- read_vtp(tet_vtp)
+  mesh <- read_vtp(sphere_vtp)
   expect_s3_class(mesh, "mesh3d")
   expect_true(is.matrix(mesh$vb))
   expect_true(is.matrix(mesh$it))
@@ -9,19 +9,19 @@ test_that("read_vtp returns a mesh3d with correct structure", {
   expect_equal(nrow(mesh$it), 3L)
 })
 
-test_that("read_vtp returns correct vertex and face counts for tet.vtp", {
-  mesh <- read_vtp(tet_vtp)
-  expect_equal(ncol(mesh$vb), 4L)
-  expect_equal(ncol(mesh$it), 4L)
+test_that("read_vtp returns correct vertex and face counts for sphere_open.vtp", {
+  mesh <- read_vtp(sphere_vtp)
+  expect_equal(ncol(mesh$vb), 162L)
+  expect_equal(ncol(mesh$it), 319L)
 })
 
 test_that("read_vtp homogeneous coordinate is 1 for all vertices", {
-  mesh <- read_vtp(tet_vtp)
+  mesh <- read_vtp(sphere_vtp)
   expect_true(all(mesh$vb[4L, ] == 1))
 })
 
 test_that("read_vtp triangle indices are 1-based and in range", {
-  mesh <- read_vtp(tet_vtp)
+  mesh <- read_vtp(sphere_vtp)
   expect_true(all(mesh$it >= 1L))
   expect_true(all(mesh$it <= ncol(mesh$vb)))
 })
