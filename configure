@@ -66,13 +66,13 @@ VTK_VERSION_SUFFIX=""
 
 # Helper: try to detect VTK version from a directory name like "vtk-9.6"
 detect_vtk_version_from_dir() {
-  local dir="$1"
+  dir="$1"
   basename "$dir" | grep -oE '9\.[0-9]+' | head -n 1
 }
 
 # Helper: try pkg-config for a given module name
 try_pkg_config_vtk() {
-  local mod="$1"
+  mod="$1"
   if pkg-config --exists "$mod" 2>/dev/null; then
     VTK_INC=$(pkg-config --cflags-only-I "$mod" | sed 's/-I//g' | tr ' ' '\n' | grep -v '^$' | head -n 1)
     VTK_LIBDIR=$(pkg-config --libs-only-L "$mod" | sed 's/-L//g' | awk '{print $1}')
