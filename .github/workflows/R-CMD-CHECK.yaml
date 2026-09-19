@@ -13,6 +13,8 @@ permissions: read-all
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
+    # Windows is best-effort: VTK/CGAL toolchain is complex under Rtools MinGW
+    continue-on-error: ${{ matrix.config.experimental == true }}
     concurrency:
       group: R-CMD-check-${{ matrix.config.os }}-${{ github.event_name != 'pull_request' || github.run_id }}
       cancel-in-progress: true
@@ -20,12 +22,15 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-latest, vtk-root: /opt/vtk-9.4, vespa-root: /opt/vespa }
-          - { os: macos-latest,                           vespa-root: /opt/vespa }
+          - { os: ubuntu-latest,  vtk-root: /opt/vtk-9.4,   vespa-root: /opt/vespa  }
+          - { os: macos-latest,                               vespa-root: /opt/vespa  }
+          - { os: windows-latest, vtk-root: C:/opt/vtk-9.4,  vespa-root: C:/opt/vespa, experimental: true }
+          
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      VESPA_ROOT: ${{ matrix.config.vespa-root }}
+      CMAKE_GENERATOR: Ninja
+      RGL_USE_NULL: true
 
     steps:
       - uses: actions/checkout@v7
@@ -34,57 +39,83 @@ jobs:
         with:
           use-public-rspm: true
 
-      # ── Linux: system deps (no libvtk9-dev — VTK 9.4 built from source below) ──
+      # ── System dependencies ──────────────────────────────────────────────────
+
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libcgal-dev \
-            libceres-dev \
-            cmake \
-            ninja-build \
-            build-essential \
-            libboost-all-dev \
-            libeigen3-dev
+            libcgal-dev libceres-dev cmake ninja-build \
+            build-essential libboost-all-dev libeigen3-dev \
+            libx11-dev libgl1-mesa-dev libglu1-mesa-dev
 
-      # ── macOS: system deps via Homebrew (brew vtk provides VTK >= 9.4) ──
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install cgal ceres-solver vtk ninja
+        run: |
+          brew install cgal ceres-solver vtk ninja
+          brew install --cask xquartz
+          echo "/opt/X11/bin" >> $GITHUB_PATH
+          echo "DISPLAY=:0" >> $GITHUB_ENV
 
-      # ── VTK_ROOT: dynamic on macOS (brew prefix), static on Linux ──
-      - name: Set VTK_ROOT (macOS)
+      # pacman from Rtools is on PATH after setup-r
+      - name: Install system dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          pacman -S --noconfirm --needed `
+            mingw-w64-ucrt-x86_64-cgal `
+            mingw-w64-ucrt-x86_64-ceres-solver `
+            mingw-w64-ucrt-x86_64-eigen3 `
+            mingw-w64-ucrt-x86_64-boost `
+            mingw-w64-ucrt-x86_64-ninja
+
+      # ── Build env vars (VTK_ROOT, VESPA_ROOT, compilers) ────────────────────
+
+      - name: Set build paths (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "VTK_ROOT=${{ matrix.config.vtk-root }}" >> "$GITHUB_ENV"
+          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
+
+      - name: Set build paths (macOS)
         if: runner.os == 'macOS'
-        run: echo "VTK_ROOT=$(brew --prefix vtk)" >> "$GITHUB_ENV"
+        run: |
+          echo "VTK_ROOT=$(brew --prefix vtk)" >> "$GITHUB_ENV"
+          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
 
-      - name: Set VTK_ROOT (Linux)
-        if: runner.os == 'Linux'
-        run: echo "VTK_ROOT=${{ matrix.config.vtk-root }}" >> "$GITHUB_ENV"
+      - name: Set build paths (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          echo "VTK_ROOT=${{ matrix.config.vtk-root }}" >> $env:GITHUB_ENV
+          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> $env:GITHUB_ENV
+          # Ensure cmake sub-processes (ExternalProject in tools/build-vespa) use MinGW
+          echo "CC=gcc" >> $env:GITHUB_ENV
+          echo "CXX=g++" >> $env:GITHUB_ENV
 
-      # ── Linux only: build VTK 9.4 from source ──
-      - name: Cache VTK 9.4 (Linux)
-        if: runner.os == 'Linux'
+      # ── VTK 9.4 from source (Linux + Windows; macOS uses brew) ──────────────
+
+      - name: Cache VTK 9.4
+        if: runner.os != 'macOS'
         id: cache-vtk
         uses: actions/cache@v4
         with:
-          path: ${{ matrix.config.vtk-root }}
-          key: vtk-linux-${{ hashFiles('.github/vtk-version.txt') }}
+          path: ~/vtk-cache
+          key: vtk-${{ runner.os }}-${{ hashFiles('.github/vtk-version.txt') }}
 
       - name: Build and install VTK 9.4 (Linux)
         if: runner.os == 'Linux' && steps.cache-vtk.outputs.cache-hit != 'true'
         run: |
           VTK_TAG="v$(cat .github/vtk-version.txt | tr -d '[:space:]')"
           git clone --depth 1 --branch "$VTK_TAG" \
-            https://gitlab.kitware.com/vtk/vtk.git /tmp/vtk
-          cmake -S /tmp/vtk -B /tmp/vtk-build -GNinja \
+            https://gitlab.kitware.com/vtk/vtk.git /tmp/vtk-src
+          cmake -S /tmp/vtk-src -B /tmp/vtk-build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="${{ matrix.config.vtk-root }}" \
-            -DVTK_BUILD_ALL_MODULES=OFF \
-            -DVTK_BUILD_TESTING=OFF \
-            -DVTK_BUILD_EXAMPLES=OFF \
-            -DVTK_WRAP_PYTHON=OFF \
-            -DVTK_GROUP_ENABLE_Rendering=NO \
+            -DVTK_BUILD_ALL_MODULES=OFF -DVTK_BUILD_TESTING=OFF \
+            -DVTK_BUILD_EXAMPLES=OFF -DVTK_WRAP_PYTHON=OFF \
+            -DVTK_GROUP_ENABLE_Rendering=YES \
             -DVTK_GROUP_ENABLE_Qt=NO \
             -DVTK_GROUP_ENABLE_MPI=NO \
             -DVTK_GROUP_ENABLE_Web=NO \
@@ -105,8 +136,47 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_ImagingStencil=YES
           cmake --build /tmp/vtk-build
           sudo cmake --install /tmp/vtk-build
+          
+      # Windows: convert RUNNER_TEMP backslashes to forward slashes for bash+cmake
+      - name: Build and install VTK 9.4 (Windows)
+        if: runner.os == 'Windows' && steps.cache-vtk.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          T="${{ runner.temp }}"
+          T="${T//\\//}"
+          VTK_TAG="v$(cat .github/vtk-version.txt | tr -d '[:space:]')"
+          git clone --depth 1 --branch "$VTK_TAG" \
+            https://gitlab.kitware.com/vtk/vtk.git "$T/vtk-src"
+          cmake -S "$T/vtk-src" -B "$T/vtk-build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${{ matrix.config.vtk-root }}" \
+            -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+            -DVTK_BUILD_ALL_MODULES=OFF -DVTK_BUILD_TESTING=OFF \
+            -DVTK_BUILD_EXAMPLES=OFF -DVTK_WRAP_PYTHON=OFF \
+            -DVTK_GROUP_ENABLE_Rendering=YES -DVTK_GROUP_ENABLE_Qt=NO \
+            -DVTK_GROUP_ENABLE_MPI=NO   -DVTK_GROUP_ENABLE_Web=NO \
+            -DVTK_MODULE_ENABLE_VTK_CommonCore=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonDataModel=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonExecutionModel=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersCore=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersExtraction=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersGeometry=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersGeneral=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersModeling=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersPoints=YES \
+            -DVTK_MODULE_ENABLE_VTK_RenderingCore=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersHybrid=YES \
+            -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
+            -DVTK_MODULE_ENABLE_VTK_IOXML=YES \
+            -DVTK_MODULE_ENABLE_VTK_IOCore=YES \
+            -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
+            -DVTK_MODULE_ENABLE_VTK_ImagingCore=YES \
+            -DVTK_MODULE_ENABLE_VTK_ImagingStencil=YES
+          cmake --build "$T/vtk-build"
+          cmake --install "$T/vtk-build"
 
-      # ── Vespa: build via tools/build-vespa (includes Eigen/CGAL patches) ──
+      # ── Vespa via tools/build-vespa (includes Eigen/CGAL version patches) ───
+
       - name: Cache Vespa
         id: cache-vespa
         uses: actions/cache@v4
@@ -116,12 +186,23 @@ jobs:
 
       - name: Build and install Vespa
         if: steps.cache-vespa.outputs.cache-hit != 'true'
+        shell: bash
         run: |
-          sudo cmake -S tools/build-vespa -B /tmp/vespa-build \
+          T="${{ runner.temp }}"
+          T="${T//\\//}"
+          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
+          # Pre-create install prefix on Unix (needs elevated permissions)
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            sudo mkdir -p "${{ matrix.config.vespa-root }}"
+            sudo chown "$USER" "${{ matrix.config.vespa-root }}"
+          fi
+          cmake -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
-            -DVESPA_GIT_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')" \
+            -DVESPA_GIT_TAG="$VESPA_TAG" \
             -DCMAKE_BUILD_TYPE=Release
-          sudo cmake --build /tmp/vespa-build
+          cmake --build "$T/vespa-build"
+
+      # ── R check ─────────────────────────────────────────────────────────────
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
