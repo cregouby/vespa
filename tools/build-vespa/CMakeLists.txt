@@ -12,6 +12,9 @@ set(INSTALL_PREFIX "${CMAKE_BINARY_DIR}/vespa-install"
 set(VESPA_GIT_TAG "v1.0"
     CACHE STRING "Vespa git tag or commit hash to build")
 
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
 # Detect whether the tag looks like a raw hash (shallow clone only works with named refs).
 string(LENGTH "${VESPA_GIT_TAG}" _tag_len)
 if(_tag_len GREATER 15 AND "${VESPA_GIT_TAG}" MATCHES "^[0-9a-f]+$")
