@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   poisson_reco: poisson_reco.html
   signed_distance_function: signed_distance_function.html
-last_built: 2026-09-20T20:02Z
+last_built: 2026-09-21T07:42Z
 urls:
   reference: https://cregouby.github.io/vespa/reference
   article: https://cregouby.github.io/vespa/articles
