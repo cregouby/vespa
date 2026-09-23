@@ -31,6 +31,13 @@ if(DEFINED ENV{CXX})
   set(_CXX_ARG "-DCMAKE_CXX_COMPILER=$ENV{CXX}")
 endif()
 
+# Forward VTK location so Vespa's find_package(VTK) resolves to the right build.
+if(DEFINED ENV{VTK_ROOT})
+  set(_VTK_PREFIX_ARG "-DCMAKE_PREFIX_PATH=$ENV{VTK_ROOT}")
+elseif(DEFINED VTK_ROOT)
+  set(_VTK_PREFIX_ARG "-DCMAKE_PREFIX_PATH=${VTK_ROOT}")
+endif()
+
 ExternalProject_Add(vespa
   GIT_REPOSITORY "https://gitlab.kitware.com/vtk/meshing/vespa.git"
   GIT_TAG        "${VESPA_GIT_TAG}"
@@ -53,6 +60,7 @@ ExternalProject_Add(vespa
     -DBUILD_PYTHON_WRAPPERS=OFF
     ${_CC_ARG}
     ${_CXX_ARG}
+    ${_VTK_PREFIX_ARG}
 
   # Parallel build
   BUILD_COMMAND
