@@ -43,12 +43,14 @@ ExternalProject_Add(vespa
     sed -i.bak
       -e "s|find_package(Eigen3 3\\.2\\.0 REQUIRED|find_package(Eigen3 REQUIRED|g"
       -e "s|find_package(CGAL 5\\.3\\.0 REQUIRED|find_package(CGAL REQUIRED|g"
+      -e "s|option(BUILD_PYTHON_WRAPPERS \"Build python wrapping\" ON)|option(BUILD_PYTHON_WRAPPERS \"Build python wrapping\" OFF)|"
       <SOURCE_DIR>/CMakeLists.txt &&
     ${CMAKE_COMMAND} -E rm -f <SOURCE_DIR>/CMakeLists.txt.bak
-    
+
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
+    -DBUILD_PYTHON_WRAPPERS=OFF
     ${_CC_ARG}
     ${_CXX_ARG}
 
