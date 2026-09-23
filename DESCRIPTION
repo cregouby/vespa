@@ -6,7 +6,6 @@ Description: Provides R wrappers for all Vespa filters (isotropic remeshing, boo
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 8.0.0
 SystemRequirements: VTK >= 9.4, CGAL >= 5.5, vespa >= 1.0
 Imports:
     cli,
@@ -23,3 +22,4 @@ LinkingTo:
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://cregouby.github.io/vespa/
+Config/roxygen2/version: 8.1.0

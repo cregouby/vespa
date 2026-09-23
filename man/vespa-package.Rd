@@ -4,7 +4,7 @@
 \name{vespa-package}
 \alias{vespa}
 \alias{vespa-package}
-\title{vespa: R Bindings for the Vespa VTK/CGAL Mesh Processing Library.}
+\title{vespa: R Bindings for the Vespa VTK/CGAL Mesh Processing Library}
 \description{
 Provides R wrappers for all Vespa filters (isotropic remeshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, and more) via direct Rcpp bindings to the Vespa C++/VTK library.
 }

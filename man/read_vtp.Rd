@@ -27,8 +27,13 @@ url <- paste0(
   "Data/Testing/hand.vtp?ref_type=heads"
 )
 tmp <- tempfile(fileext = ".vtp")
-download.file(url, tmp, quiet = TRUE)
-mesh <- read_vtp(tmp)
-print(mesh)
+success <- tryCatch({
+    download.file(url, tmp, quiet = TRUE, timeout = 120, method = "libcurl")
+    file.exists(tmp) && file.info(tmp)$size > 0
+  }, error = function(e) FALSE)
+if(success) {
+  mesh <- read_vtp(tmp)
+  print(mesh)
+  }
 }
 }
