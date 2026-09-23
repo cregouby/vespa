@@ -100,7 +100,7 @@ jobs:
       - name: Cache VTK 9.4
         if: runner.os != 'macOS'
         id: cache-vtk
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ matrix.config.vtk-root }}
           key: vtk-${{ runner.os }}-${{ hashFiles('.github/vtk-version.txt') }}
@@ -154,7 +154,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="${{ matrix.config.vtk-root }}" \
             -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
-            -DCMAKE_C_FLAGS="-D__USE_MINGW_ANSI_STDIO=1 -D_GNU_SOURCE -Wno-error=incompatible-pointer-types" \
+            -DCMAKE_C_FLAGS="-D__USE_MINGW_ANSI_STDIO=1 -D_GNU_SOURCE -Wno-error=incompatible-pointer-types -fcommon" \
             -DCMAKE_CXX_FLAGS="-D__USE_MINGW_ANSI_STDIO=1 -D_GNU_SOURCE" \
             -DVTK_BUILD_ALL_MODULES=OFF -DVTK_BUILD_TESTING=OFF \
             -DVTK_BUILD_EXAMPLES=OFF -DVTK_WRAP_PYTHON=OFF \
@@ -184,7 +184,7 @@ jobs:
 
       - name: Cache Vespa
         id: cache-vespa
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ matrix.config.vespa-root }}
           key: vespa-${{ runner.os }}-${{ hashFiles('.github/vespa-version.txt') }}
