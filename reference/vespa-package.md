@@ -1,4 +1,4 @@
-# vespa: R Bindings for the Vespa VTK/CGAL Mesh Processing Library.
+# vespa: R Bindings for the Vespa VTK/CGAL Mesh Processing Library
 
 Provides R wrappers for all Vespa filters (isotropic remeshing, boolean
 operations, alpha wrapping, surface reconstruction, point set

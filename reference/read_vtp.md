@@ -31,12 +31,16 @@ url <- paste0(
   "Data/Testing/hand.vtp?ref_type=heads"
 )
 tmp <- tempfile(fileext = ".vtp")
-download.file(url, tmp, quiet = TRUE)
-mesh <- read_vtp(tmp)
+success <- tryCatch({
+    download.file(url, tmp, quiet = TRUE, timeout = 120, method = "libcurl")
+    file.exists(tmp) && file.info(tmp)$size > 0
+  }, error = function(e) FALSE)
+if(success) {
+  mesh <- read_vtp(tmp)
+  print(mesh)
+  }
 #> Error: XMLPolyDataReader: ERROR: In ./IO/XML/vtkXMLReader.cxx, line 521
-#> vtkXMLPolyDataReader (0x564f5175e1c0): Error parsing input file.  ReadXMLInformation aborting.
+#> vtkXMLPolyDataReader (0x55795345e3c0): Error parsing input file.  ReadXMLInformation aborting.
 #> 
-print(mesh)
-#> Error: object 'mesh' not found
 # }
 ```
