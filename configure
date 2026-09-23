@@ -281,8 +281,10 @@ auto_build_vespa() {
   return $STATUS
 }
 
+VESPA_AUTO_BUILT=false
 if [ -z "$VESPA_LIBDIR" ]; then
   if auto_build_vespa; then
+    VESPA_AUTO_BUILT=true
     VESPA_ROOT="$(pwd)/inst/vespa"
     VESPA_INC="$VESPA_ROOT/include"
     if [ -d "$VESPA_ROOT/lib" ]; then
@@ -304,12 +306,22 @@ echo ">> Checking for Vespa... OK (found in $VESPA_ROOT)"
 # --- Generate Makevars ---
 echo ">> Generating src/Makevars..."
 
+# When Vespa is auto-built into inst/vespa, use $(R_PACKAGE_DIR)/vespa/lib so
+# the final install path is embedded rather than the temporary build path.
+# When Vespa is pre-installed, embed the actual system library path.
+if [ "$VESPA_AUTO_BUILT" = "true" ]; then
+  VESPA_RPATH='$(R_PACKAGE_DIR)/vespa/lib'
+else
+  VESPA_RPATH="${VESPA_LIBDIR}"
+fi
+
 sed -e "s|@VTK_INC@|${VTK_INC}|" \
     -e "s|@VESPA_INC@|${VESPA_INC}|" \
     -e "s|@CGAL_INC@|${CGAL_INC}|" \
     -e "s|@CERES_CFLAGS@|${CERES_CFLAGS}|" \
     -e "s|@CERES_LIBS@|${CERES_LIBS}|" \
     -e "s|@VESPA_LIBDIR@|${VESPA_LIBDIR}|" \
+    -e "s|@VESPA_RPATH@|${VESPA_RPATH}|" \
     -e "s|@VTK_LIBDIR@|${VTK_LIBDIR}|" \
     -e "s|@VTK_VERSION_SUFFIX@|${VTK_VERSION_SUFFIX}|" \
     src/Makevars.in > src/Makevars

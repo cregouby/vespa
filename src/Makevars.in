@@ -30,6 +30,5 @@ PKG_LIBS = \
   -lvtkImagingCore-@VTK_VERSION_SUFFIX@ \
   -lvtkImagingStencil-@VTK_VERSION_SUFFIX@ \
   @CERES_LIBS@ \
-  -Wl,-rpath,"@VESPA_LIBDIR@" \
   -Wl,-rpath,"@VTK_LIBDIR@" \
-  -Wl,-rpath,"$(R_PACKAGE_DIR)/vespa/lib"
+  -Wl,-rpath,"@VESPA_RPATH@"
