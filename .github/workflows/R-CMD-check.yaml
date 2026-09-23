@@ -22,9 +22,9 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-latest,  vtk-root: /opt/vtk-9.4,   vespa-root: /opt/vespa  }
-          - { os: macos-latest,                             vespa-root: /opt/vespa  }
-          - { os: windows-latest, vtk-root: C:/opt/vtk-9.4, vespa-root: C:/opt/vespa, experimental: true }
+          - { os: ubuntu-latest,  vtk-root: /home/runner/vtk-9.4, vespa-root: /opt/vespa  }
+          - { os: macos-latest,                                   vespa-root: /opt/vespa  }
+          - { os: windows-latest, vtk-root: C:/vtk-9.4,           vespa-root: C:/opt/vespa, experimental: true }
           
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -102,7 +102,7 @@ jobs:
         id: cache-vtk
         uses: actions/cache@v4
         with:
-          path: ~/vtk-cache
+          path: ${{ matrix.config.vtk-root }}
           key: vtk-${{ runner.os }}-${{ hashFiles('.github/vtk-version.txt') }}
 
       - name: Build and install VTK 9.4 (Linux)
@@ -115,8 +115,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="${{ matrix.config.vtk-root }}" \
             -DVTK_BUILD_ALL_MODULES=OFF -DVTK_BUILD_TESTING=OFF \
-            -DVTK_BUILD_EXAMPLES=OFF -DVTK_WRAP_PYTHON=ON \
-            -DVTK_GROUP_ENABLE_Rendering=YES \
+            -DVTK_BUILD_EXAMPLES=OFF -DVTK_WRAP_PYTHON=OFF \
+            -DVTK_GROUP_ENABLE_Rendering=NO \
             -DVTK_GROUP_ENABLE_Qt=NO \
             -DVTK_GROUP_ENABLE_MPI=NO \
             -DVTK_GROUP_ENABLE_Web=NO \
@@ -135,8 +135,8 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
             -DVTK_MODULE_ENABLE_VTK_ImagingCore=YES \
             -DVTK_MODULE_ENABLE_VTK_ImagingStencil=YES
-          cmake --build /tmp/vtk-build
-          sudo cmake --install /tmp/vtk-build
+          cmake --build /tmp/vtk-build --parallel
+          cmake --install /tmp/vtk-build
           
       # Windows: convert RUNNER_TEMP backslashes to forward slashes for bash+cmake
       - name: Build and install VTK 9.4 (Windows)
@@ -155,8 +155,8 @@ jobs:
             -DCMAKE_C_FLAGS="-D__USE_MINGW_ANSI_STDIO=1" \
             -DCMAKE_CXX_FLAGS="-D__USE_MINGW_ANSI_STDIO=1" \
             -DVTK_BUILD_ALL_MODULES=OFF -DVTK_BUILD_TESTING=OFF \
-            -DVTK_BUILD_EXAMPLES=OFF -DVTK_WRAP_PYTHON=ON \
-            -DVTK_GROUP_ENABLE_Rendering=YES -DVTK_GROUP_ENABLE_Qt=NO \
+            -DVTK_BUILD_EXAMPLES=OFF -DVTK_WRAP_PYTHON=OFF \
+            -DVTK_GROUP_ENABLE_Rendering=NO -DVTK_GROUP_ENABLE_Qt=NO \
             -DVTK_GROUP_ENABLE_MPI=NO   -DVTK_GROUP_ENABLE_Web=NO \
             -DVTK_MODULE_ENABLE_VTK_CommonCore=YES \
             -DVTK_MODULE_ENABLE_VTK_CommonDataModel=YES \
@@ -167,15 +167,13 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_FiltersGeneral=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersModeling=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersPoints=YES \
-            -DVTK_MODULE_ENABLE_VTK_RenderingCore=YES \
-            -DVTK_MODULE_ENABLE_VTK_FiltersHybrid=YES \
             -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_IOXML=YES \
             -DVTK_MODULE_ENABLE_VTK_IOCore=YES \
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
             -DVTK_MODULE_ENABLE_VTK_ImagingCore=YES \
             -DVTK_MODULE_ENABLE_VTK_ImagingStencil=YES
-          cmake --build "$T/vtk-build"
+          cmake --build "$T/vtk-build" --parallel
           cmake --install "$T/vtk-build"
 
       # ── Vespa via tools/build-vespa (includes Eigen/CGAL version patches) ───
