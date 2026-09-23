@@ -129,6 +129,8 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_FiltersGeneral=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersModeling=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersPoints=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersHybrid=YES \
+            -DVTK_MODULE_ENABLE_VTK_RenderingCore=YES \
             -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_IOXML=YES \
             -DVTK_MODULE_ENABLE_VTK_IOCore=YES \
@@ -168,6 +170,8 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_FiltersModeling=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersPoints=YES \
             -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersHybrid=YES \
+            -DVTK_MODULE_ENABLE_VTK_RenderingCore=YES \
             -DVTK_MODULE_ENABLE_VTK_IOXML=YES \
             -DVTK_MODULE_ENABLE_VTK_IOCore=YES \
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
