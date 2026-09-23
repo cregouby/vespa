@@ -201,10 +201,23 @@ jobs:
             sudo mkdir -p "${{ matrix.config.vespa-root }}"
             sudo chown "$USER" "${{ matrix.config.vespa-root }}"
           fi
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            # VTK + Rtools where CGAL, Ceres, Eigen, Boost live
+            CMAKE_PREFIX_PATH="${{ matrix.config.vtk-root }};C:/rtools45/ucrt64"
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            # VTK comes from brew
+            CMAKE_PREFIX_PATH="$(brew --prefix vtk)"
+          else
+            # VTK in the specified folder
+            CMAKE_PREFIX_PATH="${{ matrix.config.vtk-root }}"
+          fi
+
           cmake -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
             -DVESPA_GIT_TAG="$VESPA_TAG" \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH"
+            
           cmake --build "$T/vespa-build"
 
       # ── R check ─────────────────────────────────────────────────────────────
