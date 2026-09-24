@@ -30,10 +30,6 @@ if(WIN32)
   list(APPEND _prefixes "C:/rtools45/ucrt64")
 endif()
 
-# ExternalProject_Add expands CMake lists on semicolons; escape them so the
-# child cmake receives a single -DCMAKE_PREFIX_PATH=p1\;p2 argument.
-string(REPLACE ";" "\\;" VESPA_CMAKE_PREFIX_PATH "${_prefixes}")
-
 # Detect whether the tag looks like a raw hash (shallow clone only works with named refs).
 string(LENGTH "${VESPA_GIT_TAG}" _tag_len)
 if(_tag_len GREATER 15 AND "${VESPA_GIT_TAG}" MATCHES "^[0-9a-f]+$")
@@ -66,11 +62,15 @@ ExternalProject_Add(vespa
       <SOURCE_DIR>/CMakeLists.txt &&
     ${CMAKE_COMMAND} -E rm -f <SOURCE_DIR>/CMakeLists.txt.bak
 
+  # use CMAKE_CACHE_ARGS for list management in CMakeCache.txt
+  # this allow windows unmanaged ";" transformation workaround
+  CMAKE_CACHE_ARGS
+    -DCMAKE_PREFIX_PATH:STRING=${_prefixes}
+
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
     -DBUILD_PYTHON_WRAPPERS=OFF
-    -DCMAKE_PREFIX_PATH=${VESPA_CMAKE_PREFIX_PATH}
     ${_CC_ARG}
     ${_CXX_ARG}
 
