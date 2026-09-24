@@ -70,6 +70,10 @@ mesh aspect ratio.
 [`extract_isosurface()`](https://cregouby.github.io/vespa/reference/extract_isosurface.md)
 to extract a `mesh3d` from an `sdf_volume`.
 
+Other sdf_transforms:
+[`extract_isosurface()`](https://cregouby.github.io/vespa/reference/extract_isosurface.md),
+[`sdf_volume`](https://cregouby.github.io/vespa/reference/sdf_volume.md)
+
 ## Examples
 
 ``` r

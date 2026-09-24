@@ -28,7 +28,7 @@ point-cloud VTP files (no polygon cells), `$it` is a 3×0 empty matrix.
 # \donttest{
 url <- paste0(
   "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/",
-  "Data/Testing/hand.vtp?ref_type=heads"
+  "Data/Testing/hand.vtp?ref_type=heads&inline=false"
 )
 tmp <- tempfile(fileext = ".vtp")
 success <- tryCatch({
@@ -40,7 +40,7 @@ if(success) {
   print(mesh)
   }
 #> Error: XMLPolyDataReader: ERROR: In ./IO/XML/vtkXMLReader.cxx, line 521
-#> vtkXMLPolyDataReader (0x558616cf08c0): Error parsing input file.  ReadXMLInformation aborting.
+#> vtkXMLPolyDataReader (0x55c330b200e0): Error parsing input file.  ReadXMLInformation aborting.
 #> 
 # }
 ```

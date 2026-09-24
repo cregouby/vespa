@@ -27,6 +27,11 @@ delaunay2(points, constraints = NULL)
 An `sfc_POLYGON` object (from the sf package) containing one triangle
 polygon per Delaunay triangle.
 
+## See also
+
+Other point_transforms:
+[`advancing_front_reconstruction()`](https://cregouby.github.io/vespa/reference/advancing_front_reconstruction.md)
+
 ## Examples
 
 ``` r

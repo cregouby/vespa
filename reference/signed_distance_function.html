@@ -11,7 +11,7 @@ values are outside."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">vespa</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,14 +20,8 @@ values are outside."></head><body>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/poisson_reco.html">Poisson Surface Reconstruction</a></li>
-    <li><a class="dropdown-item" href="../articles/signed_distance_function.html">Signed Distance Function</a></li>
-  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
-      </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
- <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+      </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/cregouby/vespa/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -37,7 +31,7 @@ values are outside."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Compute a signed distance function (SDF) volume from a surface mesh</h1>
-
+      <small class="dont-index">Source: <a href="https://github.com/cregouby/vespa/blob/main/R/signed_distance.R" class="external-link"><code>R/signed_distance.R</code></a></small>
       <div class="d-none name"><code>signed_distance_function.Rd</code></div>
     </div>
 
@@ -106,7 +100,10 @@ the mesh aspect ratio.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="extract_isosurface.html">extract_isosurface()</a></code> to extract a <code>mesh3d</code> from an <code>sdf_volume</code>.</p></div>
+    <div class="dont-index"><p><code><a href="extract_isosurface.html">extract_isosurface()</a></code> to extract a <code>mesh3d</code> from an <code>sdf_volume</code>.</p>
+<p>Other sdf_transforms:
+<code><a href="extract_isosurface.html">extract_isosurface()</a></code>,
+<code><a href="sdf_volume.html">sdf_volume</a></code></p></div>
     </div>
 
     <div class="section level2">

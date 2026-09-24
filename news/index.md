@@ -1,8 +1,13 @@
 # Changelog
 
+## vespa 0.6.0
+
+- Reorganize documentation website.
+
 ## vespa 0.5.0
 
 - Add BUILD vespa lib capability.
+- Bump vespa to development version.
 
 ## vespa 0.4.0
 

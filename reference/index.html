@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">vespa</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -16,14 +16,8 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/poisson_reco.html">Poisson Surface Reconstruction</a></li>
-    <li><a class="dropdown-item" href="../articles/signed_distance_function.html">Signed Distance Function</a></li>
-  </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
-      </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
- <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+      </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/cregouby/vespa/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -36,9 +30,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="all-functions">All functions<a class="anchor" aria-label="anchor" href="#all-functions"></a></h2>
+      <h2 id="mesh-transformations">Mesh Transformations<a class="anchor" aria-label="anchor" href="#mesh-transformations"></a></h2>
 
-
+      <div class="section-desc"><p>Transformation functions applied to 3D Mesh</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -46,13 +40,6 @@
 
 
       <dl><dt>
-
-          <code><a href="advancing_front_reconstruction.html">advancing_front_reconstruction()</a></code>
-
-        </dt>
-        <dd>Reconstruct a surface from a point cloud (Advancing Front)</dd>
-
-        <dt>
 
           <code><a href="alpha_wrapping.html">alpha_wrapping()</a></code>
 
@@ -65,20 +52,6 @@
 
         </dt>
         <dd>Boolean operation on two triangular surface meshes</dd>
-
-        <dt>
-
-          <code><a href="delaunay2.html">delaunay2()</a></code>
-
-        </dt>
-        <dd>2D Delaunay triangulation of a planar point set</dd>
-
-        <dt>
-
-          <code><a href="extract_isosurface.html">extract_isosurface()</a></code>
-
-        </dt>
-        <dd>Extract an isosurface from a 3-D scalar field</dd>
 
         <dt>
 
@@ -138,6 +111,82 @@
 
         <dt>
 
+          <code><a href="region_fairing.html">region_fairing()</a></code>
+
+        </dt>
+        <dd>Fair a region of a triangular surface mesh</dd>
+
+        <dt>
+
+          <code><a href="shape_smoothing.html">shape_smoothing()</a></code>
+
+        </dt>
+        <dd>Shape-preserving smoothing of a triangular surface mesh</dd>
+      </dl></div><div class="section level2">
+      <h2 id="signed-distance-surface-sdf-transformations">Signed Distance Surface (sdf) Transformations<a class="anchor" aria-label="anchor" href="#signed-distance-surface-sdf-transformations"></a></h2>
+
+      <div class="section-desc"><p>Transformation functions applied to signed distance surface voxels</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="extract_isosurface.html">extract_isosurface()</a></code>
+
+        </dt>
+        <dd>Extract an isosurface from a 3-D scalar field</dd>
+
+        <dt>
+
+          <code><a href="sdf_volume.html">sdf_volume</a></code> <code><a href="sdf_volume.html">sdf_volume-class</a></code>
+
+        </dt>
+        <dd>SDF volume objects</dd>
+
+        <dt>
+
+          <code><a href="signed_distance_function.html">signed_distance_function()</a></code>
+
+        </dt>
+        <dd>Compute a signed distance function (SDF) volume from a surface mesh</dd>
+      </dl></div><div class="section level2">
+      <h2 id="point-cloud-transformations">Point cloud Transformations<a class="anchor" aria-label="anchor" href="#point-cloud-transformations"></a></h2>
+
+      <div class="section-desc"><p>Transformation functions applied to a point cloud</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="advancing_front_reconstruction.html">advancing_front_reconstruction()</a></code>
+
+        </dt>
+        <dd>Reconstruct a surface from a point cloud (Advancing Front)</dd>
+
+        <dt>
+
+          <code><a href="delaunay2.html">delaunay2()</a></code>
+
+        </dt>
+        <dd>2D Delaunay triangulation of a planar point set</dd>
+      </dl></div><div class="section level2">
+      <h2 id="-d-i-o-functions">3D I/O functions<a class="anchor" aria-label="anchor" href="#-d-i-o-functions"></a></h2>
+
+      <div class="section-desc"><p>Input Output functions</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
           <code><a href="read_points_xyz.html">read_points_xyz()</a></code>
 
         </dt>
@@ -156,36 +205,9 @@
 
         </dt>
         <dd>Read a surface mesh or point cloud from a VTP file</dd>
-
-        <dt>
-
-          <code><a href="region_fairing.html">region_fairing()</a></code>
-
-        </dt>
-        <dd>Fair a region of a triangular surface mesh</dd>
-
-        <dt>
-
-          <code><a href="sdf_volume.html">sdf_volume</a></code> <code><a href="sdf_volume.html">sdf_volume-class</a></code>
-
-        </dt>
-        <dd>SDF volume objects</dd>
-
-        <dt>
-
-          <code><a href="shape_smoothing.html">shape_smoothing()</a></code>
-
-        </dt>
-        <dd>Shape-preserving smoothing of a triangular surface mesh</dd>
-
-        <dt>
-
-          <code><a href="signed_distance_function.html">signed_distance_function()</a></code>
-
-        </dt>
-        <dd>Compute a signed distance function (SDF) volume from a surface mesh</dd>
       </dl></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

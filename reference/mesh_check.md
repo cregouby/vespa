@@ -42,6 +42,21 @@ A `mesh3d` object — identical to the input unless
 `attempt_repair = TRUE` and repairs were applied. R warnings are emitted
 for each issue detected.
 
+## See also
+
+Other mesh_transforms:
+[`alpha_wrapping()`](https://cregouby.github.io/vespa/reference/alpha_wrapping.md),
+[`boolean_operation()`](https://cregouby.github.io/vespa/reference/boolean_operation.md),
+[`isotropic_remeshing()`](https://cregouby.github.io/vespa/reference/isotropic_remeshing.md),
+[`mesh_deformation()`](https://cregouby.github.io/vespa/reference/mesh_deformation.md),
+[`mesh_smoothing()`](https://cregouby.github.io/vespa/reference/mesh_smoothing.md),
+[`mesh_subdivision()`](https://cregouby.github.io/vespa/reference/mesh_subdivision.md),
+[`patch_filling()`](https://cregouby.github.io/vespa/reference/patch_filling.md),
+[`pca_estimate_normals()`](https://cregouby.github.io/vespa/reference/pca_estimate_normals.md),
+[`poisson_reconstruction()`](https://cregouby.github.io/vespa/reference/poisson_reconstruction.md),
+[`region_fairing()`](https://cregouby.github.io/vespa/reference/region_fairing.md),
+[`shape_smoothing()`](https://cregouby.github.io/vespa/reference/shape_smoothing.md)
+
 ## Examples
 
 ``` r

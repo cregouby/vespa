@@ -35,6 +35,9 @@ A `mesh3d` object with the reconstructed surface.
 
 [`poisson_reconstruction()`](https://cregouby.github.io/vespa/reference/poisson_reconstruction.md)
 
+Other point_transforms:
+[`delaunay2()`](https://cregouby.github.io/vespa/reference/delaunay2.md)
+
 ## Examples
 
 ``` r

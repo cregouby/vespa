@@ -26,5 +26,6 @@ outside.
 
 ## See also
 
-[`signed_distance_function()`](https://cregouby.github.io/vespa/reference/signed_distance_function.md),
-[`extract_isosurface()`](https://cregouby.github.io/vespa/reference/extract_isosurface.md)
+Other sdf_transforms:
+[`extract_isosurface()`](https://cregouby.github.io/vespa/reference/extract_isosurface.md),
+[`signed_distance_function()`](https://cregouby.github.io/vespa/reference/signed_distance_function.md)
