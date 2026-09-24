@@ -9,20 +9,26 @@ navbar:
  structure:
   left:  [home, examples, reference, news]
   right: [github]
-
+ components:
+  articles: ~
+  examples:
+  
 reference:
 - title: Mesh Transformations
-  desc: Transformation functions applied to 3D Mesh 
+  desc: > 
+    Transformation functions applied to 3D Mesh 
   contents:
     - has_concept("mesh_transforms")
 
 - title: Signed Distance Surface (sdf) Transformations
-  desc: Transformation functions applied to signed distance surface voxels
+  desc: >
+    Transformation functions applied to signed distance surface voxels
   contents:
     - has_concept("sdf_transforms")
 
-- title:Point cloud Transformations
-  desc: Transformation functions applied to a point cloud
+- title: Point cloud Transformations
+  desc: >
+    Transformation functions applied to a point cloud
   contents:
     - has_concept("point_transforms")
 
