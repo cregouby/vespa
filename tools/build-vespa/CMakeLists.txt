@@ -15,12 +15,24 @@ set(VESPA_GIT_TAG "v1.0"
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
-set(VESPA_CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
-if(WIN32)
-  # Add MinGW UCRT path from Rtools
-  string(APPEND VESPA_CMAKE_PREFIX_PATH ";C:/rtools45/ucrt64")
+# Build CMAKE_PREFIX_PATH for the ExternalProject (merge all sources).
+set(_prefixes "${CMAKE_PREFIX_PATH}")
+
+# Honour VTK_ROOT env/cache var if it wasn't already baked into CMAKE_PREFIX_PATH.
+if(DEFINED ENV{VTK_ROOT} AND NOT "$ENV{VTK_ROOT}" IN_LIST _prefixes)
+  list(APPEND _prefixes "$ENV{VTK_ROOT}")
+elseif(DEFINED VTK_ROOT AND NOT "${VTK_ROOT}" IN_LIST _prefixes)
+  list(APPEND _prefixes "${VTK_ROOT}")
 endif()
 
+if(WIN32)
+  # Add MinGW UCRT path from Rtools (where pacman installs CGAL, Ceres, etc.)
+  list(APPEND _prefixes "C:/rtools45/ucrt64")
+endif()
+
+# ExternalProject_Add expands CMake lists on semicolons; escape them so the
+# child cmake receives a single -DCMAKE_PREFIX_PATH=p1\;p2 argument.
+string(REPLACE ";" "\\;" VESPA_CMAKE_PREFIX_PATH "${_prefixes}")
 
 # Detect whether the tag looks like a raw hash (shallow clone only works with named refs).
 string(LENGTH "${VESPA_GIT_TAG}" _tag_len)
@@ -36,13 +48,6 @@ if(DEFINED ENV{CC})
 endif()
 if(DEFINED ENV{CXX})
   set(_CXX_ARG "-DCMAKE_CXX_COMPILER=$ENV{CXX}")
-endif()
-
-# Forward VTK location so Vespa's find_package(VTK) resolves to the right build.
-if(DEFINED ENV{VTK_ROOT})
-  set(_VTK_PREFIX_ARG "-DCMAKE_PREFIX_PATH=$ENV{VTK_ROOT}")
-elseif(DEFINED VTK_ROOT)
-  set(_VTK_PREFIX_ARG "-DCMAKE_PREFIX_PATH=${VTK_ROOT}")
 endif()
 
 ExternalProject_Add(vespa
@@ -68,7 +73,6 @@ ExternalProject_Add(vespa
     -DCMAKE_PREFIX_PATH=${VESPA_CMAKE_PREFIX_PATH}
     ${_CC_ARG}
     ${_CXX_ARG}
-    ${_VTK_PREFIX_ARG}
 
   # Parallel build
   BUILD_COMMAND
