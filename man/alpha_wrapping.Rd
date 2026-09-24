@@ -42,3 +42,18 @@ mesh <- read_stl(f)
 wrapped <- alpha_wrapping(mesh, alpha = 0.5, absolute_thresholds = TRUE)
 }
 }
+\seealso{
+Other mesh_transforms:
+\code{\link[=boolean_operation]{boolean_operation()}},
+\code{\link[=isotropic_remeshing]{isotropic_remeshing()}},
+\code{\link[=mesh_check]{mesh_check()}},
+\code{\link[=mesh_deformation]{mesh_deformation()}},
+\code{\link[=mesh_smoothing]{mesh_smoothing()}},
+\code{\link[=mesh_subdivision]{mesh_subdivision()}},
+\code{\link[=patch_filling]{patch_filling()}},
+\code{\link[=pca_estimate_normals]{pca_estimate_normals()}},
+\code{\link[=poisson_reconstruction]{poisson_reconstruction()}},
+\code{\link[=region_fairing]{region_fairing()}},
+\code{\link[=shape_smoothing]{shape_smoothing()}}
+}
+\concept{mesh_transforms}

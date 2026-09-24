@@ -34,4 +34,8 @@ result <- advancing_front_reconstruction(cloud)
 }
 \seealso{
 \code{\link[=poisson_reconstruction]{poisson_reconstruction()}}
+
+Other point_transforms:
+\code{\link[=delaunay2]{delaunay2()}}
 }
+\concept{point_transforms}

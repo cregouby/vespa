@@ -57,4 +57,8 @@ range(sdf$array)                 # negative inside, positive outside
 }
 \seealso{
 \code{\link[=extract_isosurface]{extract_isosurface()}} to extract a \code{mesh3d} from an \code{sdf_volume}.
+
+Other sdf_transforms:
+\code{\link[=extract_isosurface]{extract_isosurface()}}
 }
+\concept{sdf_transforms}

@@ -29,4 +29,8 @@ field. Currently implemented for objects of class \code{\link{sdf_volume}}
 }
 \seealso{
 \code{\link[=signed_distance_function]{signed_distance_function()}} to build an \code{sdf_volume}.
+
+Other sdf_transforms:
+\code{\link[=signed_distance_function]{signed_distance_function()}}
 }
+\concept{sdf_transforms}
