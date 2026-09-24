@@ -22,5 +22,6 @@ LinkingTo:
     Rcpp
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://cregouby.github.io/vespa/
+URL: https://cregouby.github.io/vespa/, https://github.com/cregouby/vespa
 Config/roxygen2/version: 8.1.0
+BugReports: https://github.com/cregouby/vespa/issues
