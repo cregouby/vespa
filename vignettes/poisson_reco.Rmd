@@ -61,7 +61,7 @@ hand_pts$it <- matrix(integer(0), 3L, 0L)
 
 `poisson_reconstruction()` requires oriented normals. If your point
 cloud has none (as is the case here, since we stripped the mesh
-connectivity and with it any per-vertex normal information), use
+connectivity and, with it, any per-vertex normal information), use
 `pca_estimate_normals()`: it fits a local plane to the `n_neighbors`
 nearest neighbours and derives a normal from that plane.
 

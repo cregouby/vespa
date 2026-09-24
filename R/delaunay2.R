@@ -16,23 +16,32 @@
 #' pts <- matrix(c(0,0, 1,0, 1,1, 0,1, 0.5,0.5), ncol = 2, byrow = TRUE)
 #' triangles <- delaunay2(pts)
 #' length(triangles)  # number of Delaunay triangles
+#' @family point_transforms
 delaunay2 <- function(points, constraints = NULL) {
   points <- as.matrix(points)
-  if (!is.numeric(points) || ncol(points) != 2L)
-    cli::cli_abort("{.arg points} must be a numeric matrix with 2 columns (x, y)")
+  if (!is.numeric(points) || ncol(points) != 2L) {
+    cli::cli_abort(
+      "{.arg points} must be a numeric matrix with 2 columns (x, y)"
+    )
+  }
 
   constraint_edges <- if (is.null(constraints)) {
     NULL
   } else {
     m <- as.matrix(constraints)
-    if (!is.integer(m)) storage.mode(m) <- "integer"
-    if (ncol(m) != 2L)
-      cli::cli_abort("{.arg constraints} must be a 2-column matrix of vertex indices")
+    if (!is.integer(m)) {
+      storage.mode(m) <- "integer"
+    }
+    if (ncol(m) != 2L) {
+      cli::cli_abort(
+        "{.arg constraints} must be a 2-column matrix of vertex indices"
+      )
+    }
     m
   }
 
   rings <- rcpp_delaunay2(
-    points           = points,
+    points = points,
     constraint_edges = constraint_edges
   )
 

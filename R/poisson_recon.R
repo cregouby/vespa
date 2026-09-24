@@ -26,22 +26,28 @@
 #' cloud_n <- pca_estimate_normals(cloud)
 #' result  <- poisson_reconstruction(cloud_n)
 #' }
-poisson_reconstruction <- function(mesh,
-                                min_angle   = 20,
-                                max_size    = 2,
-                                distance    = 0.375,
-                                gen_normals = TRUE) {
+#' @family mesh_transforms
+poisson_reconstruction <- function(
+  mesh,
+  min_angle = 20,
+  max_size = 2,
+  distance = 0.375,
+  gen_normals = TRUE
+) {
   .validate_mesh3d(mesh)
-  if (is.null(mesh$normals))
+  if (is.null(mesh$normals)) {
     cli::cli_abort(
-      c("{.arg mesh} must have a {.field $normals} field.",
-        "i" = "Run {.fn pca_estimate_normals} first to estimate normals.")
+      c(
+        "{.arg mesh} must have a {.field $normals} field.",
+        "i" = "Run {.fn pca_estimate_normals} first to estimate normals."
+      )
     )
+  }
   rcpp_poisson_recon(
-    mesh        = mesh,
-    min_angle   = as.double(min_angle),
-    max_size    = as.double(max_size),
-    distance    = as.double(distance),
+    mesh = mesh,
+    min_angle = as.double(min_angle),
+    max_size = as.double(max_size),
+    distance = as.double(distance),
     gen_normals = as.logical(gen_normals)
   )
 }

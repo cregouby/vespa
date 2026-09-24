@@ -22,17 +22,20 @@
 #' mesh <- read_stl(f)
 #' wrapped <- alpha_wrapping(mesh, alpha = 0.5, absolute_thresholds = TRUE)
 #' }
-alpha_wrapping <- function(mesh,
-                             alpha               = 5.0,
-                             offset              = 3.0,
-                             absolute_thresholds = FALSE,
-                             update_attributes   = TRUE) {
+#' @family mesh_transforms
+alpha_wrapping <- function(
+  mesh,
+  alpha = 5.0,
+  offset = 3.0,
+  absolute_thresholds = FALSE,
+  update_attributes = TRUE
+) {
   .validate_mesh3d(mesh)
   rcpp_alpha_wrap(
-    mesh                = mesh,
-    alpha               = as.double(alpha),
-    offset              = as.double(offset),
+    mesh = mesh,
+    alpha = as.double(alpha),
+    offset = as.double(offset),
     absolute_thresholds = as.logical(absolute_thresholds),
-    update_attributes   = as.logical(update_attributes)
+    update_attributes = as.logical(update_attributes)
   )
 }

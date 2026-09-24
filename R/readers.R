@@ -14,8 +14,9 @@
 #' print(mesh)
 read_stl <- function(filename) {
   filename <- as.character(filename)
-  if (!file.exists(filename))
+  if (!file.exists(filename)) {
     cli::cli_abort("File not found: {.path {filename}}")
+  }
   rcpp_read_stl(filename)
 }
 
@@ -50,8 +51,9 @@ read_stl <- function(filename) {
 #' }
 read_vtp <- function(filename) {
   filename <- as.character(filename)
-  if (!file.exists(filename))
+  if (!file.exists(filename)) {
     cli::cli_abort("File not found: {.path {filename}}")
+  }
   rcpp_read_vtp(filename)
 }
 
@@ -75,7 +77,8 @@ read_vtp <- function(filename) {
 #' print(cloud)
 read_points_xyz <- function(filename) {
   filename <- as.character(filename)
-  if (!file.exists(filename))
+  if (!file.exists(filename)) {
     cli::cli_abort("File not found: {.path {filename}}")
+  }
   rcpp_read_points(filename)
 }

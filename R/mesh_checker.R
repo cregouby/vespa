@@ -21,15 +21,18 @@
 #' f <- system.file("extdata", "torus.stl", package = "vespa")
 #' mesh <- read_stl(f)
 #' result <- mesh_check(mesh)
-mesh_check <- function(mesh,
-                             check_watertight = TRUE,
-                             check_intersect  = TRUE,
-                             attempt_repair   = FALSE) {
+#' @family mesh_transforms
+mesh_check <- function(
+  mesh,
+  check_watertight = TRUE,
+  check_intersect = TRUE,
+  attempt_repair = FALSE
+) {
   .validate_mesh3d(mesh)
   rcpp_mesh_check(
-    mesh             = mesh,
+    mesh = mesh,
     check_watertight = as.logical(check_watertight),
-    check_intersect  = as.logical(check_intersect),
-    attempt_repair   = as.logical(attempt_repair)
+    check_intersect = as.logical(check_intersect),
+    attempt_repair = as.logical(attempt_repair)
   )
 }

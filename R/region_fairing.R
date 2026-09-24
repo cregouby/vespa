@@ -16,15 +16,18 @@
 #' f <- system.file("extdata", "torus.stl", package = "vespa")
 #' mesh <- read_stl(f)
 #' result <- region_fairing(mesh, point_ids = 1:5)
-region_fairing <- function(mesh,
-                              point_ids,
-                              update_attributes = TRUE) {
+#'
+#' @family mesh_transforms
+region_fairing <- function(mesh, point_ids, update_attributes = TRUE) {
   .validate_mesh3d(mesh)
-  if (missing(point_ids) || length(point_ids) == 0L)
-    cli::cli_abort("{.arg point_ids} must be a non-empty integer vector of vertex indices")
+  if (missing(point_ids) || length(point_ids) == 0L) {
+    cli::cli_abort(
+      "{.arg point_ids} must be a non-empty integer vector of vertex indices"
+    )
+  }
   rcpp_region_fair(
-    mesh              = mesh,
-    point_ids         = as.integer(point_ids),
+    mesh = mesh,
+    point_ids = as.integer(point_ids),
     update_attributes = as.logical(update_attributes)
   )
 }

@@ -2,3 +2,31 @@ url: https://cregouby.github.io/vespa/
 template:
   bootstrap: 5
 
+development:
+  mode: auto
+
+navbar:
+ structure:
+  left:  [home, examples, reference, news]
+  right: [github]
+
+reference:
+- title: Mesh Transformations
+  desc: Transformation functions applied to 3D Mesh 
+  contents:
+    - has_concept("mesh_transforms")
+
+- title: Signed Distance Surface (sdf) Transformations
+  desc: Transformation functions applied to signed distance surface voxels
+  contents:
+    - has_concept("sdf_transforms")
+
+- title:Point cloud Transformations
+  desc: Transformation functions applied to a point cloud
+  contents:
+    - has_concept("point_transforms")
+
+- title: 3D I/O functions
+  desc: Input Output functions 
+  contents:
+    - starts_with("read_")

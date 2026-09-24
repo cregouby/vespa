@@ -19,15 +19,19 @@
 #' f <- system.file("extdata", "torus.stl", package = "vespa")
 #' mesh <- read_stl(f)
 #' result <- patch_filling(mesh)  # no-op: torus has no holes
-patch_filling <- function(mesh,
-                             point_ids          = integer(0),
-                             fairing_continuity = 1L,
-                             update_attributes  = TRUE) {
+#'
+#' @family mesh_transforms
+patch_filling <- function(
+  mesh,
+  point_ids = integer(0),
+  fairing_continuity = 1L,
+  update_attributes = TRUE
+) {
   .validate_mesh3d(mesh)
   rcpp_patch_fill(
-    mesh               = mesh,
-    point_ids          = as.integer(point_ids),
+    mesh = mesh,
+    point_ids = as.integer(point_ids),
     fairing_continuity = as.integer(fairing_continuity),
-    update_attributes  = as.logical(update_attributes)
+    update_attributes = as.logical(update_attributes)
   )
 }

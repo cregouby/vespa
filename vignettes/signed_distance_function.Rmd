@@ -3,8 +3,11 @@ title: "Signed Distance Function"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Signed Distance Function}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r, include = FALSE}

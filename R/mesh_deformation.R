@@ -30,34 +30,43 @@
 #' target <- matrix(orig + c(0.1, 0, 0), nrow = 1)
 #' result <- mesh_deformation(mesh, control_ids = 1L, target_coords = target)
 #' }
-mesh_deformation <- function(mesh,
-                              control_ids,
-                              target_coords,
-                              roi_ids      = integer(0),
-                              mode         = c("smooth", "sre_arap"),
-                              sre_alpha    = 0.02,
-                              n_iterations = 5L,
-                              tolerance    = 1e-4) {
+#' @family mesh_transforms
+mesh_deformation <- function(
+  mesh,
+  control_ids,
+  target_coords,
+  roi_ids = integer(0),
+  mode = c("smooth", "sre_arap"),
+  sre_alpha = 0.02,
+  n_iterations = 5L,
+  tolerance = 1e-4
+) {
   .validate_mesh3d(mesh)
-  if (missing(control_ids) || length(control_ids) == 0L)
-    cli::cli_abort("{.arg control_ids} must be a non-empty integer vector of vertex indices")
+  if (missing(control_ids) || length(control_ids) == 0L) {
+    cli::cli_abort(
+      "{.arg control_ids} must be a non-empty integer vector of vertex indices"
+    )
+  }
   target_coords <- as.matrix(target_coords)
-  if (!is.numeric(target_coords) || ncol(target_coords) != 3L)
-    cli::cli_abort("{.arg target_coords} must be a numeric matrix with 3 columns (x, y, z)")
-  if (nrow(target_coords) != length(control_ids))
-    cli::cli_abort("{.arg target_coords} must have one row per entry in {.arg control_ids}")
-  mode_code <- switch(match.arg(mode),
-    smooth   = 0L,
-    sre_arap = 1L
-  )
+  if (!is.numeric(target_coords) || ncol(target_coords) != 3L) {
+    cli::cli_abort(
+      "{.arg target_coords} must be a numeric matrix with 3 columns (x, y, z)"
+    )
+  }
+  if (nrow(target_coords) != length(control_ids)) {
+    cli::cli_abort(
+      "{.arg target_coords} must have one row per entry in {.arg control_ids}"
+    )
+  }
+  mode_code <- switch(match.arg(mode), smooth = 0L, sre_arap = 1L)
   rcpp_mesh_deform(
-    mesh          = mesh,
-    control_ids   = as.integer(control_ids),
+    mesh = mesh,
+    control_ids = as.integer(control_ids),
     target_coords = target_coords,
-    roi_ids       = as.integer(roi_ids),
-    mode          = mode_code,
-    sre_alpha     = as.double(sre_alpha),
-    n_iterations  = as.integer(n_iterations),
-    tolerance     = as.double(tolerance)
+    roi_ids = as.integer(roi_ids),
+    mode = mode_code,
+    sre_alpha = as.double(sre_alpha),
+    n_iterations = as.integer(n_iterations),
+    tolerance = as.double(tolerance)
   )
 }

@@ -23,15 +23,18 @@
 #' cloud <- mesh; cloud$it <- matrix(integer(0), 3L, 0L)
 #' cloud_n <- pca_estimate_normals(cloud)
 #' }
-pca_estimate_normals <- function(mesh,
-                              n_neighbors       = 18L,
-                              orient            = TRUE,
-                              delete_unoriented = TRUE) {
+#' @family mesh_transforms
+pca_estimate_normals <- function(
+  mesh,
+  n_neighbors = 18L,
+  orient = TRUE,
+  delete_unoriented = TRUE
+) {
   .validate_mesh3d(mesh)
   rcpp_pca_normals(
-    mesh              = mesh,
-    n_neighbors       = as.integer(n_neighbors),
-    orient            = as.logical(orient),
+    mesh = mesh,
+    n_neighbors = as.integer(n_neighbors),
+    orient = as.logical(orient),
     delete_unoriented = as.logical(delete_unoriented)
   )
 }

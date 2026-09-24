@@ -21,17 +21,20 @@
 #' mesh <- read_stl(f)
 #' result <- isotropic_remeshing(mesh, n_iterations = 1L)
 #' }
-isotropic_remeshing <- function(mesh,
-                                   target_length     = -1.0,
-                                   protect_angle     = 45.0,
-                                   n_iterations      = 1L,
-                                   update_attributes = TRUE) {
+#' @family mesh_transforms
+isotropic_remeshing <- function(
+  mesh,
+  target_length = -1.0,
+  protect_angle = 45.0,
+  n_iterations = 1L,
+  update_attributes = TRUE
+) {
   .validate_mesh3d(mesh)
   rcpp_isotropic_remesh(
-    mesh              = mesh,
-    target_length     = as.double(target_length),
-    protect_angle     = as.double(protect_angle),
-    n_iterations      = as.integer(n_iterations),
+    mesh = mesh,
+    target_length = as.double(target_length),
+    protect_angle = as.double(protect_angle),
+    n_iterations = as.integer(n_iterations),
     update_attributes = as.logical(update_attributes)
   )
 }

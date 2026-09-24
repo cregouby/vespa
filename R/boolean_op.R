@@ -21,21 +21,25 @@
 #' mesh2$vb[1, ] <- mesh2$vb[1, ] + 0.5  # shift copy along X
 #' result <- boolean_operation(mesh, mesh2, operation = "union")
 #' }
-boolean_operation <- function(mesh_a,
-                             mesh_b,
-                             operation         = c("difference", "intersection", "union"),
-                             update_attributes = TRUE) {
+#' @family mesh_transforms
+boolean_operation <- function(
+  mesh_a,
+  mesh_b,
+  operation = c("difference", "intersection", "union"),
+  update_attributes = TRUE
+) {
   .validate_mesh3d(mesh_a, arg = "mesh_a")
   .validate_mesh3d(mesh_b, arg = "mesh_b")
-  op_code <- switch(match.arg(operation),
-    difference   = 0L,
+  op_code <- switch(
+    match.arg(operation),
+    difference = 0L,
     intersection = 1L,
-    union        = 2L
+    union = 2L
   )
   rcpp_boolean_op(
-    mesh_a            = mesh_a,
-    mesh_b            = mesh_b,
-    operation         = op_code,
+    mesh_a = mesh_a,
+    mesh_b = mesh_b,
+    operation = op_code,
     update_attributes = as.logical(update_attributes)
   )
 }

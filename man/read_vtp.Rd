@@ -24,7 +24,7 @@ are supported.
 \donttest{
 url <- paste0(
   "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/",
-  "Data/Testing/hand.vtp?ref_type=heads"
+  "Data/Testing/hand.vtp?ref_type=heads&inline=false"
 )
 tmp <- tempfile(fileext = ".vtp")
 success <- tryCatch({

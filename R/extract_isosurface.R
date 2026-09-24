@@ -12,6 +12,7 @@
 #'
 #' @seealso [signed_distance_function()] to build an `sdf_volume`.
 #' @export
+#' @family sdf_transforms
 extract_isosurface <- function(x, isovalue = 0, ...) {
   UseMethod("extract_isosurface")
 }
@@ -20,15 +21,15 @@ extract_isosurface <- function(x, isovalue = 0, ...) {
 #' @export
 extract_isosurface.sdf_volume <- function(x, isovalue = 0, ...) {
   result <- extract_isosurface_cpp(
-    array     = as.vector(x$array),
-    dims      = as.integer(x$dims),
-    spacing   = as.numeric(x$spacing),
-    origin    = as.numeric(x$origin),
-    isovalue  = as.numeric(isovalue)
+    array = as.vector(x$array),
+    dims = as.integer(x$dims),
+    spacing = as.numeric(x$spacing),
+    origin = as.numeric(x$origin),
+    isovalue = as.numeric(isovalue)
   )
-  
+
   rgl::mesh3d(
-    vertices  = result$vb,
+    vertices = result$vb,
     triangles = result$it
   )
 }
@@ -37,11 +38,14 @@ extract_isosurface.sdf_volume <- function(x, isovalue = 0, ...) {
 #' @export
 extract_isosurface.default <- function(x, isovalue = 0, ...) {
   if (inherits(x, "mesh3d")) {
-    cli::cli_abort(c(
-      "{.fn extract_isosurface} expects a volumetric field of class {.cls sdf_volume},",
-      "not a surface mesh of class {.cls mesh3d}.",
-      "i" = "Did you mean to call {.fn signed_distance_function} first?"
-    ), call. = FALSE)
+    cli::cli_abort(
+      c(
+        "{.fn extract_isosurface} expects a volumetric field of class {.cls sdf_volume},",
+        "not a surface mesh of class {.cls mesh3d}.",
+        "i" = "Did you mean to call {.fn signed_distance_function} first?"
+      ),
+      call. = FALSE
+    )
   }
   cli::cli_abort(
     "{.fn extract_isosurface} has no method for objects of class {.cls {class(x)}}.",
@@ -71,13 +75,25 @@ NULL
 #' @export
 print.sdf_volume <- function(x, ...) {
   cat("<sdf_volume>\n")
-  cat(sprintf("  dims:    %d x %d x %d  (%s voxels)\n",
-              x$dims[1], x$dims[2], x$dims[3],
-              format(prod(x$dims), big.mark = ",")))
-  cat(sprintf("  spacing: %.4g x %.4g x %.4g\n",
-              x$spacing[1], x$spacing[2], x$spacing[3]))
-  cat(sprintf("  origin:  (%.4g, %.4g, %.4g)\n",
-              x$origin[1], x$origin[2], x$origin[3]))
+  cat(sprintf(
+    "  dims:    %d x %d x %d  (%s voxels)\n",
+    x$dims[1],
+    x$dims[2],
+    x$dims[3],
+    format(prod(x$dims), big.mark = ",")
+  ))
+  cat(sprintf(
+    "  spacing: %.4g x %.4g x %.4g\n",
+    x$spacing[1],
+    x$spacing[2],
+    x$spacing[3]
+  ))
+  cat(sprintf(
+    "  origin:  (%.4g, %.4g, %.4g)\n",
+    x$origin[1],
+    x$origin[2],
+    x$origin[3]
+  ))
   rng <- range(x$array, na.rm = TRUE)
   cat(sprintf("  values:  [%.4g, %.4g]\n", rng[1], rng[2]))
   invisible(x)

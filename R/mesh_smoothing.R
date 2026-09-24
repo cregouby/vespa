@@ -20,20 +20,20 @@
 #' mesh <- read_stl(f)
 #' smooth <- mesh_smoothing(mesh, method = "tangential", n_iterations = 3L)
 #' }
-mesh_smoothing <- function(mesh,
-                              method             = c("tangential", "angle_area"),
-                              n_iterations       = 10L,
-                              safety_constraints = FALSE,
-                              update_attributes  = TRUE) {
+#' @family mesh_transforms
+mesh_smoothing <- function(
+  mesh,
+  method = c("tangential", "angle_area"),
+  n_iterations = 10L,
+  safety_constraints = FALSE,
+  update_attributes = TRUE
+) {
   .validate_mesh3d(mesh)
-  method_code <- switch(match.arg(method),
-    tangential = 1L,
-    angle_area = 2L
-  )
+  method_code <- switch(match.arg(method), tangential = 1L, angle_area = 2L)
   rcpp_mesh_smooth(
-    mesh             = mesh,
-    method           = method_code,
-    n_iterations     = as.integer(n_iterations),
+    mesh = mesh,
+    method = method_code,
+    n_iterations = as.integer(n_iterations),
     safety_constraints = as.logical(safety_constraints),
     update_attributes = as.logical(update_attributes)
   )

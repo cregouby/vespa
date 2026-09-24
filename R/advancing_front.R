@@ -21,13 +21,16 @@
 #' cloud <- mesh; cloud$it <- matrix(integer(0), 3L, 0L)
 #' result <- advancing_front_reconstruction(cloud)
 #' }
-advancing_front_reconstruction <- function(mesh,
-                                  per               = 0,
-                                  radius_ratio_bound = 5) {
+#' @family point_transforms
+advancing_front_reconstruction <- function(
+  mesh,
+  per = 0,
+  radius_ratio_bound = 5
+) {
   .validate_mesh3d(mesh)
   rcpp_advancing_front(
-    mesh               = mesh,
-    per                = as.double(per),
+    mesh = mesh,
+    per = as.double(per),
     radius_ratio_bound = as.double(radius_ratio_bound)
   )
 }

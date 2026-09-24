@@ -19,22 +19,25 @@
 #' sub <- mesh_subdivision(mesh, type = "loop", n_iterations = 1L)
 #' print(sub)
 #' }
-mesh_subdivision <- function(mesh,
-                            type              = c("sqrt3", "loop",
-                                                  "catmull_clark", "doo_sabin"),
-                            n_iterations      = 1L,
-                            update_attributes = TRUE) {
+#' @family mesh_transforms
+mesh_subdivision <- function(
+  mesh,
+  type = c("sqrt3", "loop", "catmull_clark", "doo_sabin"),
+  n_iterations = 1L,
+  update_attributes = TRUE
+) {
   .validate_mesh3d(mesh)
-  type_code <- switch(match.arg(type),
+  type_code <- switch(
+    match.arg(type),
     catmull_clark = 0L,
-    loop          = 1L,
-    doo_sabin     = 2L,
-    sqrt3         = 3L
+    loop = 1L,
+    doo_sabin = 2L,
+    sqrt3 = 3L
   )
   rcpp_subdivide(
-    mesh              = mesh,
-    subdivision_type  = type_code,
-    n_iterations      = as.integer(n_iterations),
+    mesh = mesh,
+    subdivision_type = type_code,
+    n_iterations = as.integer(n_iterations),
     update_attributes = as.logical(update_attributes)
   )
 }
