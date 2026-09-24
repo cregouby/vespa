@@ -15,6 +15,13 @@ set(VESPA_GIT_TAG "v1.0"
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
+set(VESPA_CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
+if(WIN32)
+  # Add MinGW UCRT path from Rtools
+  string(APPEND VESPA_CMAKE_PREFIX_PATH ";C:/rtools45/ucrt64")
+endif()
+
+
 # Detect whether the tag looks like a raw hash (shallow clone only works with named refs).
 string(LENGTH "${VESPA_GIT_TAG}" _tag_len)
 if(_tag_len GREATER 15 AND "${VESPA_GIT_TAG}" MATCHES "^[0-9a-f]+$")
@@ -58,6 +65,7 @@ ExternalProject_Add(vespa
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
     -DBUILD_PYTHON_WRAPPERS=OFF
+    -DCMAKE_PREFIX_PATH=${VESPA_CMAKE_PREFIX_PATH}
     ${_CC_ARG}
     ${_CXX_ARG}
     ${_VTK_PREFIX_ARG}
