@@ -27,10 +27,20 @@ Generic function that extracts an isosurface from a volumetric scalar
 field. Currently implemented for objects of class \code{\link{sdf_volume}}
 (returned by \code{\link[=signed_distance_function]{signed_distance_function()}}).
 }
+\examples{
+if (rlang::is_installed("rgl")) {
+f <- system.file("extdata", "torus.stl", package = "vespa")
+mesh <- read_stl(f)
+torus_sdf <- signed_distance_function(mesh, base_resolution = 32L, padding = 3L)
+torus_fat <- extract_isosurface(torus_sdf, isovalue = .3)
+rgl::plot3d(torus_fat)
+torus_shrink <- extract_isosurface(torus_sdf, isovalue = -.15)
+rgl::plot3d(torus_shrink)
+}
+}
 \seealso{
-\code{\link[=signed_distance_function]{signed_distance_function()}} to build an \code{sdf_volume}.
-
 Other sdf_transforms:
+\code{\link{sdf_volume}},
 \code{\link[=signed_distance_function]{signed_distance_function()}}
 }
 \concept{sdf_transforms}

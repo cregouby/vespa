@@ -20,5 +20,8 @@ negative values lie inside the source mesh and positive values outside.
 }
 
 \seealso{
-\code{\link[=signed_distance_function]{signed_distance_function()}}, \code{\link[=extract_isosurface]{extract_isosurface()}}
+Other sdf_transforms:
+\code{\link[=extract_isosurface]{extract_isosurface()}},
+\code{\link[=signed_distance_function]{signed_distance_function()}}
 }
+\concept{sdf_transforms}

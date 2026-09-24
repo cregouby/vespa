@@ -9,8 +9,17 @@
 #' @param ... Additional arguments passed to methods.
 #'
 #' @return A `mesh3d` object (from package **rgl**).
-#'
-#' @seealso [signed_distance_function()] to build an `sdf_volume`.
+#' @importFrom rlang is_installed
+#' @examples
+#' if (rlang::is_installed("rgl")) {
+#' f <- system.file("extdata", "torus.stl", package = "vespa")
+#' mesh <- read_stl(f)
+#' torus_sdf <- signed_distance_function(mesh, base_resolution = 32L, padding = 3L)
+#' torus_fat <- extract_isosurface(torus_sdf, isovalue = .3)
+#' rgl::plot3d(torus_fat)
+#' torus_shrink <- extract_isosurface(torus_sdf, isovalue = -.15)
+#' rgl::plot3d(torus_shrink)
+#' }
 #' @export
 #' @family sdf_transforms
 extract_isosurface <- function(x, isovalue = 0, ...) {
@@ -67,9 +76,9 @@ extract_isosurface.default <- function(x, isovalue = 0, ...) {
 #'   \item{`array`}{3-D numeric array of signed distances (x fastest).}
 #' }
 #'
-#' @seealso [signed_distance_function()], [extract_isosurface()]
 #' @name sdf_volume
 #' @aliases sdf_volume-class
+#' @family sdf_transforms
 NULL
 
 #' @export
