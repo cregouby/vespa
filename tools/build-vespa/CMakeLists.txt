@@ -68,7 +68,7 @@ ExternalProject_Add(vespa
   CMAKE_CACHE_ARGS
     -DCMAKE_PREFIX_PATH:STRING=${_prefixes}
     -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS:BOOL=ON
-    -DCMAKE_SHARED_LINKER_FLAGS:STRING="-Wl,--export-all-symbols"
+    -DCMAKE_SHARED_LINKER_FLAGS:STRING=-Wl,--export-all-symbols
     
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
