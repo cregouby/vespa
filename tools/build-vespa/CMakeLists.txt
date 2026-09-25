@@ -63,10 +63,12 @@ ExternalProject_Add(vespa
     ${CMAKE_COMMAND} -E rm -f <SOURCE_DIR>/CMakeLists.txt.bak
 
   # use CMAKE_CACHE_ARGS for list management in CMakeCache.txt
-  # this allow windows unmanaged ";" transformation workaround
+  # this allow windows unmanaged ";" transformation workaround, 
+  # then force exportation of all symbols to the dll
   CMAKE_CACHE_ARGS
     -DCMAKE_PREFIX_PATH:STRING=${_prefixes}
-
+    -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS:BOOL=ON
+  
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
