@@ -24,8 +24,8 @@ jobs:
         config:
           - { os: ubuntu-latest,  vtk-root: /home/runner/vtk-9.4, vespa-root: /opt/vespa  }
           - { os: macos-latest,                                   vespa-root: /opt/vespa  }
-          - { os: windows-latest, vtk-root: C:/vtk-9.4,           vespa-root: C:/opt/vespa, experimental: true }
-          
+          - { os: windows-latest, vtk-root: D:/a/vtk-9.4, vespa-root: D:/a/vespa, experimental: true }
+
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
@@ -150,6 +150,9 @@ jobs:
           VTK_TAG="v$(cat .github/vtk-version.txt | tr -d '[:space:]')"
           git clone --depth 1 --branch "$VTK_TAG" \
             https://gitlab.kitware.com/vtk/vtk.git "$T/vtk-src"
+
+          mkdir -p "${{ matrix.config.vtk-root }}"
+
           cmake -S "$T/vtk-src" -B "$T/vtk-build" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="${{ matrix.config.vtk-root }}" \
