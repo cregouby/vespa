@@ -104,6 +104,7 @@ jobs:
         with:
           path: ${{ matrix.config.vtk-root }}
           key: vtk-${{ runner.os }}-${{ hashFiles('.github/vtk-version.txt') }}
+          save-always: true
 
       - name: Build and install VTK 9.4 (Linux)
         if: runner.os == 'Linux' && steps.cache-vtk.outputs.cache-hit != 'true'
@@ -191,6 +192,7 @@ jobs:
         with:
           path: ${{ matrix.config.vespa-root }}
           key: vespa-${{ runner.os }}-${{ hashFiles('.github/vespa-version.txt') }}
+          save-always: true
 
       - name: Build and install Vespa
         if: steps.cache-vespa.outputs.cache-hit != 'true'
