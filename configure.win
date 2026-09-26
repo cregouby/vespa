@@ -1,18 +1,43 @@
 #!/bin/sh
 # configure.win -- génère src/Makevars.win pour le toolchain Rtools/MinGW.
-# S'appuie sur VTK_ROOT / VESPA_ROOT (définis par la CI ou par l'utilisateur).
 
+# Debug: afficher les variables d'environnement reçues
+echo ">> configure.win: VTK_ROOT=${VTK_ROOT}"
+echo ">> configure.win: VESPA_ROOT=${VESPA_ROOT}"
+
+# Valeurs par défaut
 : "${VTK_ROOT:=D:/a/vtk-9.4}"
 : "${VESPA_ROOT:=D:/a/vespa}"
 : "${UCRT64:=C:/rtools45/ucrt64}"
 
-VTK_INCDIR=$(ls -d "${VTK_ROOT}"/include/vtk-* 2>/dev/null | head -n 1)
-if [ -z "${VTK_INCDIR}" ]; then
-  echo ">> ERROR: VTK headers not found under ${VTK_ROOT}/include" >&2
+# Vérifier que le répertoire include existe
+VTK_INCLUDE="${VTK_ROOT}/include"
+if [ ! -d "${VTK_INCLUDE}" ]; then
+  echo ">> ERROR: VTK include directory does not exist: ${VTK_INCLUDE}" >&2
   exit 1
 fi
 
-echo ">> Found VTK headers in ${VTK_INCDIR}"
+echo ">> VTK include directory exists: ${VTK_INCLUDE}"
+echo ">> Listing contents:"
+ls -la "${VTK_INCLUDE}" 2>&1 | head -20
+
+# Trouver le sous-répertoire vtk-X.Y (méthode robuste)
+VTK_INCDIR=""
+for dir in "${VTK_INCLUDE}"/vtk-*; do
+  if [ -d "${dir}" ]; then
+    VTK_INCDIR="${dir}"
+    echo ">> Found VTK headers: ${VTK_INCDIR}"
+    break
+  fi
+done
+
+if [ -z "${VTK_INCDIR}" ]; then
+  echo ">> ERROR: No vtk-* subdirectory found under ${VTK_INCLUDE}" >&2
+  echo ">> Attempting to list all subdirectories:" >&2
+  find "${VTK_INCLUDE}" -maxdepth 1 -type d 2>&1 >&2
+  exit 1
+fi
+
 echo ">> Found Vespa in ${VESPA_ROOT}"
 echo ">> Generating src/Makevars.win..."
 
