@@ -94,6 +94,10 @@ jobs:
           # Ensure cmake sub-processes (ExternalProject in tools/build-vespa) use MinGW
           echo "CC=gcc" >> $env:GITHUB_ENV
           echo "CXX=g++" >> $env:GITHUB_ENV
+          # DLL search path for dyn.load() within R CMD check / tests
+          echo "${{ matrix.config.vtk-root }}/bin" >> $env:GITHUB_PATH
+          echo "${{ matrix.config.vespa-root }}/bin" >> $env:GITHUB_PATH
+          echo "C:/rtools45/ucrt64/bin" >> $env:GITHUB_PATH
 
       # ── VTK 9.4 from source (Linux + Windows; macOS uses brew) ──────────────
 
