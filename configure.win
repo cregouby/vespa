@@ -1,0 +1,24 @@
+#!/bin/sh
+# configure.win -- génère src/Makevars.win pour le toolchain Rtools/MinGW.
+# S'appuie sur VTK_ROOT / VESPA_ROOT (définis par la CI ou par l'utilisateur).
+
+: "${VTK_ROOT:=D:/a/vtk-9.4}"
+: "${VESPA_ROOT:=D:/a/vespa}"
+: "${UCRT64:=C:/rtools45/ucrt64}"
+
+VTK_INCDIR=$(ls -d "${VTK_ROOT}"/include/vtk-* 2>/dev/null | head -n 1)
+if [ -z "${VTK_INCDIR}" ]; then
+  echo ">> ERROR: VTK headers not found under ${VTK_ROOT}/include" >&2
+  exit 1
+fi
+
+echo ">> Found VTK headers in ${VTK_INCDIR}"
+echo ">> Found Vespa in ${VESPA_ROOT}"
+echo ">> Generating src/Makevars.win..."
+
+cat > src/Makevars.win <<EOF
+PKG_CPPFLAGS = -I"${VTK_INCDIR}" -I"${VESPA_ROOT}/include" -I"${UCRT64}/include" -I"${UCRT64}/include/eigen3"
+PKG_LIBS = -L"${VESPA_ROOT}/lib" -lvtkCGALAlgorithm -lvtkCGALPMP -lvtkCGALDelaunay -lvtkCGALPSP -lvtkCGALSR -L"${VTK_ROOT}/lib" -lvtkCommonCore-9.4 -lvtkCommonDataModel-9.4 -lvtkCommonExecutionModel-9.4 -lvtkFiltersCore-9.4 -lvtkFiltersExtraction-9.4 -lvtkFiltersGeometry-9.4 -lvtkFiltersGeneral-9.4 -lvtkFiltersModeling-9.4 -lvtkFiltersPoints-9.4 -lvtkIOGeometry-9.4 -lvtkIOXML-9.4 -lvtkIOCore-9.4 -lvtkIOLegacy-9.4 -lvtkImagingCore-9.4 -lvtkImagingStencil-9.4 -L"${UCRT64}/lib" -lceres -lgmp -lmpfr
+EOF
+
+echo ">> Configuration completed successfully."
