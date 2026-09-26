@@ -30,6 +30,14 @@ if(WIN32)
   list(APPEND _prefixes "C:/rtools45/ucrt64")
 endif()
 
+# Build platform-specific shared linker flags
+set(_shared_linker_flags "")
+if(WIN32)
+  # MinGW/GNU ld: export all symbols but exclude static library symbols
+  set(_shared_linker_flags "-Wl,--export-all-symbols,--exclude-libs=ALL")
+endif()
+# Linux/macOS: leave empty (default visibility is fine)
+
 # Detect whether the tag looks like a raw hash (shallow clone only works with named refs).
 string(LENGTH "${VESPA_GIT_TAG}" _tag_len)
 if(_tag_len GREATER 15 AND "${VESPA_GIT_TAG}" MATCHES "^[0-9a-f]+$")
@@ -67,7 +75,7 @@ ExternalProject_Add(vespa
   # then force exportation of all symbols to the dll, excuding static archives
   CMAKE_CACHE_ARGS
     -DCMAKE_PREFIX_PATH:STRING=${_prefixes}
-    -DCMAKE_SHARED_LINKER_FLAGS:STRING=-Wl,--export-all-symbols,--exclude-libs=ALL
+    -DCMAKE_SHARED_LINKER_FLAGS:STRING=${_shared_linker_flags}
     
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
