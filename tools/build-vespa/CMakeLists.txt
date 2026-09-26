@@ -64,11 +64,10 @@ ExternalProject_Add(vespa
 
   # use CMAKE_CACHE_ARGS for list management in CMakeCache.txt
   # this allow windows unmanaged ";" transformation workaround, 
-  # then force exportation of all symbols to the dll
+  # then force exportation of all symbols to the dll, excuding static archives
   CMAKE_CACHE_ARGS
     -DCMAKE_PREFIX_PATH:STRING=${_prefixes}
-    -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS:BOOL=ON
-    -DCMAKE_SHARED_LINKER_FLAGS:STRING=-Wl,--export-all-symbols
+    -DCMAKE_SHARED_LINKER_FLAGS:STRING=-Wl,--export-all-symbols,--exclude-libs=ALL
     
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
