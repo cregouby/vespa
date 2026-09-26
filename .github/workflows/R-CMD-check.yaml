@@ -97,17 +97,17 @@ jobs:
 
       # ── VTK 9.4 from source (Linux + Windows; macOS uses brew) ──────────────
 
-      - name: Cache VTK 9.4
+      - name: Restore VTK cache
         if: runner.os != 'macOS'
-        id: cache-vtk
-        uses: actions/cache@v6
+        id: cache-vtk-restore
+        uses: actions/cache/restore@v6
         with:
           path: ${{ matrix.config.vtk-root }}
           key: vtk-${{ runner.os }}-${{ hashFiles('.github/vtk-version.txt') }}
-          save-always: true
+
 
       - name: Build and install VTK 9.4 (Linux)
-        if: runner.os == 'Linux' && steps.cache-vtk.outputs.cache-hit != 'true'
+        if: runner.os == 'Linux' && steps.cache-vtk-restore.outputs.cache-hit != 'true'
         run: |
           VTK_TAG="v$(cat .github/vtk-version.txt | tr -d '[:space:]')"
           git clone --depth 1 --branch "$VTK_TAG" \
@@ -143,7 +143,7 @@ jobs:
           
       # Windows: convert RUNNER_TEMP backslashes to forward slashes for bash+cmake
       - name: Build and install VTK 9.4 (Windows)
-        if: runner.os == 'Windows' && steps.cache-vtk.outputs.cache-hit != 'true'
+        if: runner.os == 'Windows' && steps.cache-vtk-restore.outputs.cache-hit != 'true'
         shell: bash
         run: |
           T="${{ runner.temp }}"
@@ -184,18 +184,24 @@ jobs:
           cmake --build "$T/vtk-build" --parallel
           cmake --install "$T/vtk-build"
 
+          - name: Save VTK cache
+            if: always() && runner.os != 'macOS' && steps.cache-vtk-restore.outputs.cache-hit != 'true'
+            uses: actions/cache/save@v6
+            with:
+              path: ${{ matrix.config.vtk-root }}
+              key: ${{ steps.cache-vtk-restore.outputs.cache-primary-key }}
+
       # ── Vespa via tools/build-vespa (includes Eigen/CGAL version patches) ───
 
-      - name: Cache Vespa
-        id: cache-vespa
-        uses: actions/cache@v6
+      - name: Restore Vespa cache
+        id: cache-vespa-restore
+        uses: actions/cache/restore@v6
         with:
           path: ${{ matrix.config.vespa-root }}
           key: vespa-${{ runner.os }}-${{ hashFiles('.github/vespa-version.txt') }}
-          save-always: true
 
       - name: Build and install Vespa
-        if: steps.cache-vespa.outputs.cache-hit != 'true'
+        if: steps.cache-vespa-restore.outputs.cache-hit != 'true'
         shell: bash
         run: |
           T="${{ runner.temp }}"
@@ -206,15 +212,20 @@ jobs:
             sudo mkdir -p "${{ matrix.config.vespa-root }}"
             sudo chown "$USER" "${{ matrix.config.vespa-root }}"
           fi
-
           cmake -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
             -DVESPA_GIT_TAG="$VESPA_TAG" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_PREFIX_PATH="${{ matrix.config.vtk-root }}"
-            
           cmake --build "$T/vespa-build"
-
+                    
+      - name: Save Vespa cache
+        if: always() && steps.cache-vespa-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ matrix.config.vespa-root }}
+          key: ${{ steps.cache-vespa-restore.outputs.cache-primary-key }}
+            
       # ── R check ─────────────────────────────────────────────────────────────
 
       - uses: r-lib/actions/setup-r-dependencies@v2
