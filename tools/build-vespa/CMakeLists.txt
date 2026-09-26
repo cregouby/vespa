@@ -54,6 +54,14 @@ if(DEFINED ENV{CXX})
   set(_CXX_ARG "-DCMAKE_CXX_COMPILER=$ENV{CXX}")
 endif()
 
+# Determine VTK_DIR for explicit discovery
+set(_vtk_dir "")
+if(DEFINED ENV{VTK_ROOT})
+  set(_vtk_dir "$ENV{VTK_ROOT}/lib/cmake/vtk-9.4")
+elseif(DEFINED VTK_ROOT)
+  set(_vtk_dir "${VTK_ROOT}/lib/cmake/vtk-9.4")
+endif()
+
 ExternalProject_Add(vespa
   GIT_REPOSITORY "https://gitlab.kitware.com/vtk/meshing/vespa.git"
   GIT_TAG        "${VESPA_GIT_TAG}"
@@ -76,7 +84,8 @@ ExternalProject_Add(vespa
   CMAKE_CACHE_ARGS
     -DCMAKE_PREFIX_PATH:STRING=${_prefixes}
     -DCMAKE_SHARED_LINKER_FLAGS:STRING=${_shared_linker_flags}
-    
+    -DVTK_DIR:PATH=${_vtk_dir} 
+        
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
