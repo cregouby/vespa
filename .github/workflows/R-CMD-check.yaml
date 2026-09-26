@@ -184,12 +184,12 @@ jobs:
           cmake --build "$T/vtk-build" --parallel
           cmake --install "$T/vtk-build"
 
-          - name: Save VTK cache
-            if: always() && runner.os != 'macOS' && steps.cache-vtk-restore.outputs.cache-hit != 'true'
-            uses: actions/cache/save@v6
-            with:
-              path: ${{ matrix.config.vtk-root }}
-              key: ${{ steps.cache-vtk-restore.outputs.cache-primary-key }}
+      - name: Save VTK cache
+        if: always() && runner.os != 'macOS' && steps.cache-vtk-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ matrix.config.vtk-root }}
+          key: ${{ steps.cache-vtk-restore.outputs.cache-primary-key }}
 
       # ── Vespa via tools/build-vespa (includes Eigen/CGAL version patches) ───
 
