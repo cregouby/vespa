@@ -1,5 +1,9 @@
 #!/bin/sh
+#!/bin/sh
 # configure.win -- generate src/Makevars.win for the Rtools/MinGW toolchain.
+# Revision: glob-v1 (links the full transitive closure of import libs)
+
+echo ">> configure.win revision: glob-v1"
 
 : "${VTK_ROOT:=D:/a/vtk-9.4}"
 : "${VESPA_ROOT:=D:/a/vespa}"
