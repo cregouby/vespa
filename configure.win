@@ -1,0 +1,66 @@
+#!/bin/sh
+#!/bin/sh
+# configure.win -- generate src/Makevars.win for the Rtools/MinGW toolchain.
+# Revision: glob-v1 (links the full transitive closure of import libs)
+
+echo ">> EXECUTING configure.win from $(pwd)"
+echo ">> Script location: $0"
+echo ">> Script size: $(wc -c < "$0") bytes"
+echo ">> configure.win revision: glob-v1"
+
+: "${VTK_ROOT:=D:/a/vtk-9.4}"
+: "${VESPA_ROOT:=D:/a/vespa}"
+: "${UCRT64:=C:/rtools45/ucrt64}"
+
+VTK_INCLUDE="${VTK_ROOT}/include"
+if [ ! -d "${VTK_INCLUDE}" ]; then
+  echo ">> ERROR: VTK include directory does not exist: ${VTK_INCLUDE}" >&2
+  exit 1
+fi
+
+# Locate the versioned header subdirectory (e.g. include/vtk-9.4)
+VTK_INCDIR=""
+for dir in "${VTK_INCLUDE}"/vtk-*; do
+  if [ -d "${dir}" ]; then
+    VTK_INCDIR="${dir}"
+    break
+  fi
+done
+if [ -z "${VTK_INCDIR}" ]; then
+  echo ">> ERROR: No vtk-* subdirectory found under ${VTK_INCLUDE}" >&2
+  exit 1
+fi
+
+# Collect import libraries (full transitive closure).
+# On Windows (PE), every DLL providing a referenced symbol must be linked
+# explicitly, so glob all import libs instead of maintaining a manual list.
+VESPA_LIBS=""
+for f in "${VESPA_ROOT}"/lib/lib*.dll.a; do
+  [ -e "${f}" ] || continue
+  n="${f##*/}"; n="${n%.dll.a}"
+  VESPA_LIBS="${VESPA_LIBS} -l${n#lib}"
+done
+
+VTK_LIBS=""
+for f in "${VTK_ROOT}"/lib/libvtk*.dll.a; do
+  [ -e "${f}" ] || continue
+  n="${f##*/}"; n="${n%.dll.a}"
+  VTK_LIBS="${VTK_LIBS} -l${n#lib}"
+done
+
+if [ -z "${VESPA_LIBS}" ] || [ -z "${VTK_LIBS}" ]; then
+  echo ">> ERROR: no import libraries found in ${VESPA_ROOT}/lib or ${VTK_ROOT}/lib" >&2
+  exit 1
+fi
+
+echo ">> Found VTK headers: ${VTK_INCDIR}"
+echo ">> Vespa libs:${VESPA_LIBS}"
+echo ">> VTK libs:${VTK_LIBS}"
+echo ">> Generating src/Makevars.win..."
+
+cat > src/Makevars.win <<EOF
+PKG_CPPFLAGS = -I"${VTK_INCDIR}" -I"${VESPA_ROOT}/include" -I"${UCRT64}/include" -I"${UCRT64}/include/eigen3"
+PKG_LIBS = -L"${VESPA_ROOT}/lib" ${VESPA_LIBS} -L"${VTK_ROOT}/lib" ${VTK_LIBS} -L"${UCRT64}/lib" -lceres -lgmp -lmpfr
+EOF
+
+echo ">> Configuration completed successfully."
