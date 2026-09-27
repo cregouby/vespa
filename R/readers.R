@@ -37,7 +37,7 @@ read_stl <- function(filename) {
 #' \donttest{
 #' url <- paste0(
 #'   "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/",
-#'   "Data/Testing/hand.vtp?ref_type=heads&inline=false"
+#'   "Data/Testing/hand.vtp?ref_type=heads"
 #' )
 #' tmp <- tempfile(fileext = ".vtp")
 #' success <- tryCatch({
