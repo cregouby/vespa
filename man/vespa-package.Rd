@@ -4,23 +4,25 @@
 \name{vespa-package}
 \alias{vespa}
 \alias{vespa-package}
-\title{vespa: Mesh Transformations Using Vespa VTK/CGAL Mesh Processing Library}
+\title{vespa: Mesh Transformations Using 'Vespa' 'VTK/CGAL' Mesh Processing Library}
 \description{
-Provides R wrappers for all Vespa filters (isotropic remeshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, and more) via direct Rcpp bindings to the Vespa C++/VTK library.
+Provides R wrappers for all 'Vespa' filters (isotropic re-meshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, and more) via direct 'Rcpp' bindings to the 'Vespa C++' 'VTK/CGAL' library.
 }
 \seealso{
 Useful links:
 \itemize{
   \item \url{https://cregouby.github.io/vespa/}
+  \item \url{https://github.com/cregouby/vespa}
+  \item Report bugs at \url{https://github.com/cregouby/vespa/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: Christophe Regouby \email{christophe.regouby@airbus.com} [copyright holder]
+\strong{Maintainer}: Christophe Regouby \email{christophe.regouby@free.fr} [copyright holder]
 
 Authors:
 \itemize{
-  \item Christophe Regouby \email{christophe.regouby@airbus.com} [copyright holder]
+  \item Christophe Regouby \email{christophe.regouby@free.fr} [copyright holder]
 }
 
 }
