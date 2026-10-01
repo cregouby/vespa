@@ -35,10 +35,7 @@ read_stl <- function(filename) {
 #' @export
 #' @examples
 #' \donttest{
-#' url <- paste0(
-#'   "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/",
-#'   "Data/Testing/hand.vtp?ref_type=heads"
-#' )
+#' url <- "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/Data/Testing/hand.vtp?ref_type=heads"
 #' tmp <- tempfile(fileext = ".vtp")
 #' success <- tryCatch({
 #'     download.file(url, tmp, quiet = TRUE, timeout = 120, method = "libcurl")
