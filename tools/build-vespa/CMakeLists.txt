@@ -47,11 +47,21 @@ else()
 endif()
 
 # Forward the compilers chosen by R's toolchain so the ABI matches.
+# R exports CC/CXX as "<compiler> <flags>" (e.g. "gcc -std=gnu2x"), but CMake
+# requires CMAKE_<LANG>_COMPILER to be a single executable: keep only the
+# first token. The -std flags are irrelevant for the external Vespa build
+# (it sets its own C++ standard); only the compiler family matters for ABI.
+set(_CC_ARG "")
+set(_CXX_ARG "")
+
 if(DEFINED ENV{CC})
-  set(_CC_ARG  "-DCMAKE_C_COMPILER=$ENV{CC}")
+  string(REGEX REPLACE "^[ ]*([^ ]+).*" "\\1" _cc_compiler "$ENV{CC}")
+  set(_CC_ARG "-DCMAKE_C_COMPILER=${_cc_compiler}")
 endif()
+
 if(DEFINED ENV{CXX})
-  set(_CXX_ARG "-DCMAKE_CXX_COMPILER=$ENV{CXX}")
+  string(REGEX REPLACE "^[ ]*([^ ]+).*" "\\1" _cxx_compiler "$ENV{CXX}")
+  set(_CXX_ARG "-DCMAKE_CXX_COMPILER=${_cxx_compiler}")
 endif()
 
 # Determine VTK_DIR for explicit discovery
