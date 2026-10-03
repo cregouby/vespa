@@ -10,4 +10,6 @@ CGAL libraries (third-party dependencies), not by our package code. Our code
 uses `Rcpp::Rcerr`/`Rcpp::Rcout` for console output and `Rcpp::stop()` for 
 error handling, as required by CRAN policies.
 
-* This is a new release.
+### Note 
+
+* This is a new submission.

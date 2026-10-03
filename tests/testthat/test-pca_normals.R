@@ -1,5 +1,5 @@
 test_that("pca_estimate_normals adds $normals to a point cloud", {
-  pts    <- make_sphere_pointcloud()
+  pts <- make_sphere_pointcloud()
   result <- pca_estimate_normals(pts)
   expect_s3_class(result, "mesh3d")
   expect_false(is.null(result$normals))
@@ -8,7 +8,7 @@ test_that("pca_estimate_normals adds $normals to a point cloud", {
 })
 
 test_that("pca_estimate_normals preserves point count (or removes unoriented)", {
-  pts    <- make_sphere_pointcloud()
+  pts <- make_sphere_pointcloud()
   result <- pca_estimate_normals(pts, delete_unoriented = FALSE)
   expect_equal(ncol(result$vb), ncol(pts$vb))
 })

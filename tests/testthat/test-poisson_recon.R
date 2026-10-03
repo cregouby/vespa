@@ -4,7 +4,7 @@ test_that("poisson_reconstruction requires $normals field", {
 })
 
 test_that("poisson_reconstruction reconstructs a surface after pca_normals", {
-  pts    <- make_sphere_pointcloud()
+  pts <- make_sphere_pointcloud()
   with_n <- pca_estimate_normals(pts)
   result <- poisson_reconstruction(with_n)
   expect_s3_class(result, "mesh3d")
