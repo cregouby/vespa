@@ -34,19 +34,9 @@ read_stl <- function(filename) {
 #'   matrix.
 #' @export
 #' @examples
-#' \donttest{
-#' url <- paste0("https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master",
-#'   "/Data/Testing/hand.vtp?ref_type=heads")
-#' tmp <- tempfile(fileext = ".vtp")
-#' success <- tryCatch({
-#'     download.file(url, tmp, quiet = TRUE, timeout = 120, method = "libcurl")
-#'     file.exists(tmp) && file.info(tmp)$size > 0
-#'   }, error = function(e) FALSE)
-#' if(success) {
-#'   mesh <- read_vtp(tmp)
-#'   print(mesh)
-#'   }
-#' }
+#' f <- system.file("testdata", "sphere_open.vtp", package = "vespa")
+#' mesh <- read_vtp(f)
+#' print(mesh)
 read_vtp <- function(filename) {
   filename <- as.character(filename)
   if (!file.exists(filename)) {

@@ -1,4 +1,3 @@
-
 test_that("mesh_smoothing (tangential) returns a mesh3d with same topology", {
   tet <- make_tet_mesh3d()
   result <- mesh_smoothing(tet, method = "tangential", n_iterations = 3L)

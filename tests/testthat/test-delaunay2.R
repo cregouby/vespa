@@ -1,12 +1,12 @@
 test_that("delaunay2 triangulates a square into 2 triangles", {
-  pts <- matrix(c(0, 0,  1, 0,  1, 1,  0, 1), ncol = 2, byrow = TRUE)
+  pts <- matrix(c(0, 0, 1, 0, 1, 1, 0, 1), ncol = 2, byrow = TRUE)
   result <- delaunay2(pts)
   expect_s3_class(result, "sfc")
   expect_length(result, 2L)
 })
 
 test_that("delaunay2 returns sfc_POLYGON elements", {
-  pts <- matrix(c(0, 0,  1, 0,  0.5, 1), ncol = 2, byrow = TRUE)
+  pts <- matrix(c(0, 0, 1, 0, 0.5, 1), ncol = 2, byrow = TRUE)
   result <- delaunay2(pts)
   expect_true(all(vapply(result, inherits, logical(1), "sfg")))
   expect_equal(attr(result, "class")[1], "sfc_POLYGON")
@@ -21,7 +21,7 @@ test_that("delaunay2 rejects non-numeric input", {
 })
 
 test_that("delaunay2 with constraint edge includes that edge", {
-  pts  <- matrix(c(0, 0,  1, 0,  1, 1,  0, 1), ncol = 2, byrow = TRUE)
+  pts <- matrix(c(0, 0, 1, 0, 1, 1, 0, 1), ncol = 2, byrow = TRUE)
   cons <- matrix(c(1L, 3L), nrow = 1)
   result <- delaunay2(pts, constraints = cons)
   expect_s3_class(result, "sfc")
