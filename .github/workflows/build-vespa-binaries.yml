@@ -1,0 +1,46 @@
+name: Build Vespa Binaries (Windows)
+
+on:
+  workflow_dispatch:  
+
+jobs:
+  build-vespa-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v7
+      
+      - name: Install dependencies via pacman
+        shell: bash
+        run: |
+          pacman -S --noconfirm --needed \
+            mingw-w64-ucrt-x86_64-cgal \
+            mingw-w64-ucrt-x86_64-ceres-solver \
+            mingw-w64-ucrt-x86_64-eigen3 \
+            mingw-w64-ucrt-x86_64-boost \
+            mingw-w64-ucrt-x86_64-ninja \
+            mingw-w64-ucrt-x86_64-vtk
+      
+      - name: Build Vespa (static)
+        shell: bash
+        run: |
+          T="${{ runner.temp }}"
+          T="${T//\\//}"
+          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
+          INSTALL_DIR="inst/vespa"
+          
+          mkdir -p "$INSTALL_DIR"
+          
+          cmake -S tools/build-vespa -B "$T/vespa-build" \
+            -DINSTALL_PREFIX="$PWD/$INSTALL_DIR" \
+            -DVESPA_GIT_TAG="$VESPA_TAG" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF  # Forcer bibliothèques statiques
+          
+          cmake --build "$T/vespa-build"
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vespa-binaries-windows
+          path: inst/vespa/
