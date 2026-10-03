@@ -1,4 +1,9 @@
 #!/bin/sh
+# configure -- Unix/macOS configuration for the vespa R package.
+# Revision: rvtk-v1
+#   * VTK resolution is delegated to rvtk (system install, Homebrew,
+#     pkg-config, or automatic prebuilt-static fallback).
+#   * CGAL / Ceres / Vespa detection kept, including Vespa auto-build.
 
 # Function to print installation instructions based on the operating system
 print_install_instructions() {
@@ -10,7 +15,7 @@ print_install_instructions() {
   echo "This package requires CGAL, VTK 9, Ceres Solver, and the Vespa library."
   echo ""
   echo "1. CGAL, VTK, and Ceres can be installed via your package manager:"
-  
+
   if [ "$(uname)" = "Darwin" ]; then
     echo "   On macOS (using Homebrew):"
     echo "     brew install cgal vtk ceres-solver"
@@ -59,111 +64,22 @@ if [ -z "$CGAL_INC" ]; then
 fi
 echo ">> Checking for CGAL... OK (found in $CGAL_INC)"
 
-# --- Check for VTK ---
-VTK_INC=""
-VTK_LIBDIR=""
-VTK_VERSION_SUFFIX=""
-
-# Helper: try to detect VTK version from a directory name like "vtk-9.6"
-detect_vtk_version_from_dir() {
-  dir="$1"
-  basename "$dir" | grep -oE '9\.[0-9]+' | head -n 1
-}
-
-# Helper: try pkg-config for a given module name
-try_pkg_config_vtk() {
-  mod="$1"
-  if pkg-config --exists "$mod" 2>/dev/null; then
-    VTK_INC=$(pkg-config --cflags-only-I "$mod" | sed 's/-I//g' | tr ' ' '\n' | grep -v '^$' | head -n 1)
-    VTK_LIBDIR=$(pkg-config --libs-only-L "$mod" | sed 's/-L//g' | awk '{print $1}')
-    VTK_VERSION=$(pkg-config --modversion "$mod" 2>/dev/null)
-    VTK_VERSION_SUFFIX=$(echo "$VTK_VERSION" | cut -d. -f1,2)
-    echo ">> Found VTK via pkg-config module: $mod (version $VTK_VERSION)"
-    return 0
-  fi
-  return 1
-}
-
-# Step 1: Try pkg-config with common module names
-if command -v pkg-config >/dev/null 2>&1; then
-  # First try the generic 'vtk' module
-  for mod in vtk VTK; do
-    if try_pkg_config_vtk "$mod"; then
-      break
-    fi
-  done
-  
-  # If not found, list all available vtk-* modules and pick the newest 9.x
-  if [ -z "$VTK_LIBDIR" ]; then
-    for mod in $(pkg-config --list-all 2>/dev/null | awk '{print $1}' | grep -iE '^vtk-?9' | sort -V -r); do
-      if try_pkg_config_vtk "$mod"; then
-        break
-      fi
-    done
-  fi
-fi
-
-# Step 2: Fallback — scan common include directories for any vtk-9.x
-if [ -z "$VTK_LIBDIR" ]; then
-  # Allow user override via VTK_ROOT
-  SEARCH_DIRS=""
-  if [ -n "$VTK_ROOT" ]; then
-    SEARCH_DIRS="$VTK_ROOT"
-  fi
-  SEARCH_DIRS="$SEARCH_DIRS /usr/local /opt/homebrew /usr"
-  
-  for base in $SEARCH_DIRS; do
-    # Look for include/vtk-9.x subdirectories
-    for inc_dir in "$base/include"/vtk-9.*; do
-      if [ -d "$inc_dir" ] && [ -f "$inc_dir/vtkSmartPointer.h" ]; then
-        VTK_INC="$inc_dir"
-        VTK_VERSION_SUFFIX=$(detect_vtk_version_from_dir "$inc_dir")
-        
-        # Determine lib directory
-        if [ -d "$base/lib/x86_64-linux-gnu" ]; then
-          VTK_LIBDIR="$base/lib/x86_64-linux-gnu"
-        elif [ -d "$base/lib/aarch64-linux-gnu" ]; then
-          VTK_LIBDIR="$base/lib/aarch64-linux-gnu"
-        elif [ -d "$base/lib64" ]; then
-          VTK_LIBDIR="$base/lib64"
-        elif [ -d "$base/lib" ]; then
-          VTK_LIBDIR="$base/lib"
-        fi
-        echo ">> Found VTK $VTK_VERSION_SUFFIX in $base (headers: $VTK_INC)"
-        break 2
-      fi
-    done
-  done
-fi
-
-# Step 3: Fallback for macOS Homebrew Cellar
-if [ -z "$VTK_LIBDIR" ]; then
-  for d in /opt/homebrew/Cellar/vtk/9.*/lib /usr/local/Cellar/vtk/9.*/lib; do
-    if ls $d/libvtkCommonCore-9.*.dylib >/dev/null 2>&1; then
-      VTK_LIBDIR="$d"
-      VTK_VERSION_SUFFIX=$(ls $d/libvtkCommonCore-9.*.dylib 2>/dev/null | head -n 1 | grep -oE '9\.[0-9]+')
-      VTK_INC=$(echo "$d" | sed 's|/lib.*|/include/vtk-'"$VTK_VERSION_SUFFIX"'|')
-      echo ">> Found VTK in Homebrew Cellar"
-      break
-    fi
-  done
-fi
-
-# Final validation
-if [ -z "$VTK_LIBDIR" ] || [ -z "$VTK_VERSION_SUFFIX" ]; then
-  echo ">> Checking for VTK 9... FAILED."
+# --- Check for VTK (delegated to rvtk) ---
+# rvtk resolves VTK from VTK_DIR / Homebrew / pkg-config / system prefixes,
+# and falls back to downloading prebuilt static libraries. The actual flags
+# are injected at make time through tools/configure.R (see src/Makevars.in);
+# here we only fail early, with helpful instructions, when VTK is unresolvable.
+if ! "${R_HOME}/bin/Rscript" --vanilla tools/configure.R --cppflags > /dev/null 2>&1; then
+  echo ">> Checking for VTK 9 (via rvtk)... FAILED."
   print_install_instructions
   exit 1
 fi
-
-# Verify that at least one VTK library exists
-if ! ls "$VTK_LIBDIR"/libvtkCommonCore* >/dev/null 2>&1; then
-  echo ">> Checking for VTK 9... FAILED (libraries not found in $VTK_LIBDIR)."
+if ! "${R_HOME}/bin/Rscript" --vanilla tools/configure.R --libs > /dev/null 2>&1; then
+  echo ">> Checking for VTK 9 (via rvtk)... FAILED."
   print_install_instructions
   exit 1
 fi
-
-echo ">> Checking for VTK 9... OK (version $VTK_VERSION_SUFFIX, libs in $VTK_LIBDIR, headers in $VTK_INC)"
+echo ">> Checking for VTK 9 (via rvtk)... OK"
 
 # --- Check for Ceres Solver ---
 CERES_CFLAGS=""
@@ -178,7 +94,7 @@ else
   # Fallback: search for headers and libs in common locations
   CERES_INC=""
   CERES_LIBDIR=""
-  
+
   for inc_dir in /usr/include /usr/local/include /opt/homebrew/include; do
     if [ -f "$inc_dir/ceres/ceres.h" ]; then
       CERES_INC="$inc_dir"
@@ -186,7 +102,7 @@ else
       break
     fi
   done
-  
+
   for lib_dir in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /usr/lib /usr/local/lib /opt/homebrew/lib; do
     if ls $lib_dir/libceres.* >/dev/null 2>&1; then
       CERES_LIBDIR="$lib_dir"
@@ -194,7 +110,7 @@ else
       break
     fi
   done
-  
+
   if [ -n "$CERES_INC" ] && [ -n "$CERES_LIBDIR" ]; then
     echo ">> Found Ceres in standard paths"
   fi
@@ -315,15 +231,12 @@ else
   VESPA_RPATH="${VESPA_LIBDIR}"
 fi
 
-sed -e "s|@VTK_INC@|${VTK_INC}|" \
-    -e "s|@VESPA_INC@|${VESPA_INC}|" \
+sed -e "s|@VESPA_INC@|${VESPA_INC}|" \
     -e "s|@CGAL_INC@|${CGAL_INC}|" \
     -e "s|@CERES_CFLAGS@|${CERES_CFLAGS}|" \
     -e "s|@CERES_LIBS@|${CERES_LIBS}|" \
     -e "s|@VESPA_LIBDIR@|${VESPA_LIBDIR}|" \
     -e "s|@VESPA_RPATH@|${VESPA_RPATH}|" \
-    -e "s|@VTK_LIBDIR@|${VTK_LIBDIR}|" \
-    -e "s|@VTK_VERSION_SUFFIX@|${VTK_VERSION_SUFFIX}|" \
     src/Makevars.in > src/Makevars
 
 echo ">> Configuration completed successfully."

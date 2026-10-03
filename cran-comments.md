@@ -12,4 +12,6 @@ error handling, as required by CRAN policies.
 
 ### Note 
 
-* This is a new submission.
+Maintainer: ‘Christophe Regouby <christophe.regouby@free.fr>’
+  
+This is a new submission.

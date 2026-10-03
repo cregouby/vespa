@@ -9,3 +9,4 @@ src/*.dll
 inst/doc
 inst/vespa
 docs
+src/vtk_libs.rsp

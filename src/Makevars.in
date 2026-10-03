@@ -1,34 +1,22 @@
 CXX_STD = CXX17
 
+VTK_CPPFLAGS = $(shell "$(R_HOME)/bin/Rscript" --vanilla ../tools/configure.R --cppflags)
+VTK_LIBS     = $(shell "$(R_HOME)/bin/Rscript" --vanilla ../tools/configure.R --libs)
+
 PKG_CPPFLAGS = \
-  -I"@VTK_INC@" \
+   $(VTK_CPPFLAGS) \
   -I"@VESPA_INC@" \
   -I"@CGAL_INC@" \
   @CERES_CFLAGS@
 
 PKG_LIBS = \
+	$(VTK_LIBS) \
   -L"@VESPA_LIBDIR@" \
   -lvtkCGALAlgorithm \
   -lvtkCGALPMP \
   -lvtkCGALDelaunay \
   -lvtkCGALPSP \
   -lvtkCGALSR \
-  -L"@VTK_LIBDIR@" \
-  -lvtkCommonCore-@VTK_VERSION_SUFFIX@ \
-  -lvtkCommonDataModel-@VTK_VERSION_SUFFIX@ \
-  -lvtkCommonExecutionModel-@VTK_VERSION_SUFFIX@ \
-  -lvtkFiltersCore-@VTK_VERSION_SUFFIX@ \
-  -lvtkFiltersExtraction-@VTK_VERSION_SUFFIX@ \
-  -lvtkFiltersGeometry-@VTK_VERSION_SUFFIX@ \
-  -lvtkFiltersGeneral-@VTK_VERSION_SUFFIX@ \
-  -lvtkFiltersModeling-@VTK_VERSION_SUFFIX@ \
-  -lvtkFiltersPoints-@VTK_VERSION_SUFFIX@ \
-  -lvtkIOGeometry-@VTK_VERSION_SUFFIX@ \
-  -lvtkIOXML-@VTK_VERSION_SUFFIX@ \
-  -lvtkIOCore-@VTK_VERSION_SUFFIX@ \
-  -lvtkIOLegacy-@VTK_VERSION_SUFFIX@ \
-  -lvtkImagingCore-@VTK_VERSION_SUFFIX@ \
-  -lvtkImagingStencil-@VTK_VERSION_SUFFIX@ \
   @CERES_LIBS@ \
   -Wl,-rpath,"@VTK_LIBDIR@" \
   -Wl,-rpath,"@VESPA_RPATH@"

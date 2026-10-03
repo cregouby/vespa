@@ -10,6 +10,7 @@ SystemRequirements: VTK >= 9.4, CGAL >= 5.5, vespa >= 1.0
 Imports:
     cli,
     Rcpp,
+    rvtk,
     rlang,
     sf
 Suggests: 
@@ -19,7 +20,8 @@ Suggests:
     testthat (>= 3.0.0),
     tictoc
 LinkingTo: 
-    Rcpp
+    Rcpp,
+    rvtk
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://cregouby.github.io/vespa/, https://github.com/cregouby/vespa
