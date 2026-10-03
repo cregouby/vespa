@@ -25,19 +25,11 @@ point-cloud VTP files (no polygon cells), `$it` is a 3×0 empty matrix.
 ## Examples
 
 ``` r
-# \donttest{
-url <- "https://gitlab.kitware.com/vtk/meshing/vespa/-/raw/master/Data/Testing/hand.vtp?ref_type=heads"
-tmp <- tempfile(fileext = ".vtp")
-success <- tryCatch({
-    download.file(url, tmp, quiet = TRUE, timeout = 120, method = "libcurl")
-    file.exists(tmp) && file.info(tmp)$size > 0
-  }, error = function(e) FALSE)
-if(success) {
-  mesh <- read_vtp(tmp)
-  print(mesh)
-  }
+f <- system.file("testdata", "sphere_open.vtp", package = "vespa")
+mesh <- read_vtp(f)
 #> Error: XMLPolyDataReader: ERROR: In ./IO/XML/vtkXMLReader.cxx, line 521
-#> vtkXMLPolyDataReader (0x55f08587a8e0): Error parsing input file.  ReadXMLInformation aborting.
+#> vtkXMLPolyDataReader (0x55a8fe49ba10): Error parsing input file.  ReadXMLInformation aborting.
 #> 
-# }
+print(mesh)
+#> Error: object 'mesh' not found
 ```
