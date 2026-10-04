@@ -6,6 +6,7 @@ vtk_modules <- c(
   "vtkIOXML",
   "vtkIOXMLParser",
   "vtkIOCore",
+  "vtkIOGeometry",
   "vtkCommonCore",
   "vtkCommonDataModel",
   "vtkCommonExecutionModel",
@@ -13,6 +14,12 @@ vtk_modules <- c(
   "vtkCommonMisc",
   "vtkCommonSystem",
   "vtkCommonTransforms",
+  "vtkFiltersCore",
+  "vtkFiltersGeneral",
+  "vtkFiltersGeometry",
+  "vtkFiltersExtraction",
+  "vtkFiltersModeling",
+  "vtkFiltersPoints",
   "vtksys"
 )
 
