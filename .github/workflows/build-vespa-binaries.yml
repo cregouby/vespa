@@ -53,5 +53,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: vespa-binaries-windows
-          path: inst/vespa/vespa-${{ VESPA_TAG }}-static-posix-x64.zip
+          path: inst/vespa/vespa0.1.0-static-posix-x64.zip
           retention-days: 7
