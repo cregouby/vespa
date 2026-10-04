@@ -18,12 +18,22 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 # Build CMAKE_PREFIX_PATH for the ExternalProject (merge all sources).
 set(_prefixes "${CMAKE_PREFIX_PATH}")
 
-# Honour VTK_ROOT env/cache var if it wasn't already baked into CMAKE_PREFIX_PATH.
+# Add common VTK installation paths
+if(UNIX AND NOT APPLE)
+  list(APPEND _prefixes "/usr")
+  list(APPEND _prefixes "/usr/local")
+elseif(APPLE)
+  list(APPEND _prefixes "/opt/homebrew")
+  list(APPEND _prefixes "/usr/local")
+endif()
+
+# Honour VTK_ROOT if set
 if(DEFINED ENV{VTK_ROOT} AND NOT "$ENV{VTK_ROOT}" IN_LIST _prefixes)
   list(APPEND _prefixes "$ENV{VTK_ROOT}")
 elseif(DEFINED VTK_ROOT AND NOT "${VTK_ROOT}" IN_LIST _prefixes)
   list(APPEND _prefixes "${VTK_ROOT}")
 endif()
+
 
 if(WIN32)
   # Add MinGW UCRT path from Rtools (where pacman installs CGAL, Ceres, etc.)
