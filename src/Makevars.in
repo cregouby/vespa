@@ -1,22 +1,8 @@
-CXX_STD = CXX17
-
+# Generated from src/Makevars.in by configure -- do not edit.
+# VTK flags are resolved at make time by rvtk (tools/configure.R writes a
+# response file on Windows when the flag list is too long).
 VTK_CPPFLAGS = $(shell "$(R_HOME)/bin/Rscript" --vanilla ../tools/configure.R --cppflags)
 VTK_LIBS     = $(shell "$(R_HOME)/bin/Rscript" --vanilla ../tools/configure.R --libs)
 
-PKG_CPPFLAGS = \
-   $(VTK_CPPFLAGS) \
-  -I"@VESPA_INC@" \
-  -I"@CGAL_INC@" \
-  @CERES_CFLAGS@
-
-PKG_LIBS = \
-	$(VTK_LIBS) \
-  -L"@VESPA_LIBDIR@" \
-  -lvtkCGALAlgorithm \
-  -lvtkCGALPMP \
-  -lvtkCGALDelaunay \
-  -lvtkCGALPSP \
-  -lvtkCGALSR \
-  @CERES_LIBS@ \
-  -Wl,-rpath,"@VTK_LIBDIR@" \
-  -Wl,-rpath,"@VESPA_RPATH@"
+PKG_CPPFLAGS = $(VTK_CPPFLAGS) -I@VESPA_INC@ -I@CGAL_INC@ @CERES_CFLAGS@ @EXPORT_FLAGS@
+PKG_LIBS     = $(VTK_LIBS) -L@VESPA_LIBDIR@ @VESPA_LIBS@ -Wl,-rpath,@VESPA_RPATH@ @CERES_LIBS@ -lgmp -lmpfr
