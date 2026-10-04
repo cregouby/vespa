@@ -12,11 +12,17 @@ jobs:
       # Force the Rtools static-posix toolchain (same ABI as CRAN R)
       CC: gcc
       CXX: g++
+      INSTALL_DIR: inst/vespa
       
     steps:
       - uses: actions/checkout@v7
       - uses: r-lib/actions/setup-r@v2
       
+      - name: Read Vespa version
+        shell: bash
+        run: |
+          echo "VESPA_TAG=$(tr -d '[:space:]' < .github/vespa-version.txt)" >> "$GITHUB_ENV"
+        
       # pacman from Rtools is on PATH after setup-r
       - name: Install dependencies via pacman
         shell: bash
@@ -35,23 +41,22 @@ jobs:
         run: |
           T="${{ runner.temp }}"
           T="${T//\\//}"
-          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
-          INSTALL_DIR="inst/vespa"
           
           mkdir -p "$INSTALL_DIR"
           
           cmake -S tools/build-vespa -B "$T/vespa-build" \
-            -DINSTALL_PREFIX="$PWD/inst/vespa" \
+            -DINSTALL_PREFIX="$PWD/$INSTALL_DIR" \
             -DVESPA_GIT_TAG="$VESPA_TAG" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=gcc \
-            -DCMAKE_CXX_COMPILER=g++
-          
+            -DCMAKE_CXX_COMPILER=g++ \
+
           cmake --build "$T/vespa-build"
+          cpack --config "$T/vespa-build/CPackConfig.cmake"
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: vespa-binaries-windows
-          path: inst/vespa/vespa0.1.0-static-posix-x64.zip
+          path: ${{ env.INSTALL_DIR }}/vespa-${{ env.VESPA_TAG }}-static-posix-x64.zip
           retention-days: 7
