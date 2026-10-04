@@ -117,15 +117,3 @@ ExternalProject_Add(vespa
   LOG_BUILD     FALSE
   LOG_INSTALL   FALSE
 )
-# --- CPack ---
-set(CPACK_PACKAGE_NAME "vespa")
-set(CPACK_PACKAGE_VERSION "${VESPA_GIT_TAG}")
-set(CPACK_PACKAGE_FILE_NAME
-    "vespa-${VESPA_GIT_TAG}-static-posix-x64")
-set(CPACK_GENERATOR "ZIP")
-# add Zip to installation directory
-set(CPACK_PACKAGE_DIRECTORY "${INSTALL_PREFIX}")
-# put all INSTALL_PREFIX content into zip root
-set(CPACK_INSTALLED_DIRECTORIES "${INSTALL_PREFIX}" ".")
-set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
-include(CPack)
