@@ -197,7 +197,7 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_IOCore=YES \
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
             -DVTK_MODULE_ENABLE_VTK_ImagingCore=YES \
-            -DVTK_MODULE_ENABLE_VTK_ImagingStencil=YES
+            -DVTK_MODULE_ENABLE_VTK_ImagingStencil=YES \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             "$SRC_DIR"
 
