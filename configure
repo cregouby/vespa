@@ -90,7 +90,7 @@ fi
 
 # Strategy 2: Download prebuilt VTK from GitHub releases
 if [ "$VTK_FOUND" = "false" ]; then
-  VTK_VERSION="9.4.0"
+  VTK_VERSION="9.4.1"
   VTK_MINOR="${VTK_VERSION%.*}"
   
   OS=$(uname -s)

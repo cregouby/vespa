@@ -1,28 +1,24 @@
 #!/bin/sh
-# configure.win -- use bundled Vespa binaries (no system dependencies required)
+# configure.win -- use bundled or VESPA_ROOT Vespa binaries
 
-echo ">> configure.win: using bundled Vespa binaries"
+echo ">> EXECUTING configure.win from $(pwd)"
+echo ">> configure.win revision: bundled-v1"
+echo ">> VTK flags will be provided by rvtk at make time."
 
-# VESPA_ROOT is always the bundled location
-VESPA_ROOT="$(pwd)/inst/vespa"
-
-if [ ! -d "${VESPA_ROOT}/include" ]; then
-  echo ">> ERROR: bundled Vespa binaries not found in inst/vespa/" >&2
-  exit 1
-fi
-
-# Look for bundled Vespa binaries
-VESPA_ROOT=""
+# Look for Vespa: bundled inst/vespa first, then VESPA_ROOT env var
+FOUND_ROOT=""
 if [ -d "inst/vespa/include" ]; then
-  VESPA_ROOT="$(pwd)/inst/vespa"
+  FOUND_ROOT="$(pwd)/inst/vespa"
   echo ">> Using Vespa binaries bundled in inst/vespa"
 elif [ -n "${VESPA_ROOT}" ] && [ -d "${VESPA_ROOT}/include" ]; then
+  FOUND_ROOT="${VESPA_ROOT}"
   echo ">> Using VESPA_ROOT=${VESPA_ROOT}"
 else
-  echo ">> ERROR: no Vespa installation found." >&2
-  echo ">> Expected: inst/vespa/include (bundled) or \$VESPA_ROOT environment variable" >&2
+  echo ">> ERROR: no Vespa installation found (looked in inst/vespa and \$VESPA_ROOT)." >&2
   exit 1
 fi
+
+VESPA_ROOT="${FOUND_ROOT}"
 
 # Collect import libraries (Windows uses .dll.a for shared libs)
 VESPA_LIBS=""
@@ -37,7 +33,6 @@ if [ -z "${VESPA_LIBS}" ]; then
   exit 1
 fi
 
-
 echo ">> Vespa libs: ${VESPA_LIBS}"
 
 # Generate Makevars.win
@@ -48,6 +43,5 @@ VTK_LIBS     = \$(shell "\$(R_HOME)/bin\$(R_ARCH_BIN)/Rscript" --vanilla ../tool
 PKG_CPPFLAGS = \$(VTK_CPPFLAGS) -I${VESPA_ROOT}/include
 PKG_LIBS     = \$(VTK_LIBS) -L${VESPA_ROOT}/lib ${VESPA_LIBS}
 EOF
-
 
 echo ">> Configuration completed successfully."
