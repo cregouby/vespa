@@ -10,11 +10,35 @@ on:
         type: string
   push:
     paths:
+      - '.github/vtk-version.txt'
       - '.github/workflows/build-vtk-for-vespa.yml'
 
 jobs:
+  read-version:
+    name: Read VTK version
+    runs-on: ubuntu-latest
+    outputs:
+      vtk_version: ${{ steps.version.outputs.vtk_version }}
+      vtk_minor: ${{ steps.version.outputs.vtk_minor }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Read version from file
+        id: version
+        shell: bash
+        run: |
+          VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
+          VTK_MINOR="${VTK_VERSION%.*}"
+          
+          echo "vtk_version=${VTK_VERSION}" >> $GITHUB_OUTPUT
+          echo "vtk_minor=${VTK_MINOR}" >> $GITHUB_OUTPUT
+          echo "VTK version: ${VTK_VERSION}"
+          echo "VTK minor: ${VTK_MINOR}"
+
   build-vtk:
     name: Build VTK (${{ matrix.os }})
+    needs: read-version
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -66,8 +90,8 @@ jobs:
       - name: Download VTK source
         shell: bash
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
-          VTK_MINOR="${VTK_VERSION%.*}"
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
+          VTK_MINOR="${{ needs.read-version.outputs.vtk_minor }}"
           URL="https://www.vtk.org/files/release/${VTK_MINOR}/VTK-${VTK_VERSION}.tar.gz"
           echo "Downloading $URL"
           curl -fsSL "$URL" -o vtk-src.tar.gz
@@ -77,7 +101,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
           mkdir -p build install
           cd build
           
@@ -121,7 +145,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: C:\rtools45\usr\bin\bash.exe --login -eo pipefail {0}
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
           export PATH="/x86_64-w64-mingw32.static.posix/bin:${PATH}"
           TCHAIN=/x86_64-w64-mingw32.static.posix/bin
           export CC="${TCHAIN}/gcc"
@@ -129,8 +153,8 @@ jobs:
           export AR="${TCHAIN}/ar"
           export RANLIB="${TCHAIN}/ranlib"
           
-          # Store absolute paths
-          WORK_DIR="$(pwd)"
+          # Use GITHUB_WORKSPACE which always points to the workflow working directory
+          WORK_DIR="${GITHUB_WORKSPACE}"
           SRC_DIR="${WORK_DIR}/VTK-${VTK_VERSION}"
           BUILD_DIR="${WORK_DIR}/build"
           INSTALL_DIR="${WORK_DIR}/install"
@@ -172,7 +196,7 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_ImagingCore=YES \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             "$SRC_DIR"
-      
+
       - name: Build and install VTK
         shell: bash
         run: |
