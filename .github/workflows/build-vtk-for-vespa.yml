@@ -129,13 +129,25 @@ jobs:
           export AR="${TCHAIN}/ar"
           export RANLIB="${TCHAIN}/ranlib"
           
-          mkdir -p build install
-          cd build
-          INSTALL_PREFIX="$(cygpath -w "$(pwd)/../install")"
+          # Store absolute paths
+          WORK_DIR="$(pwd)"
+          SRC_DIR="${WORK_DIR}/VTK-${VTK_VERSION}"
+          BUILD_DIR="${WORK_DIR}/build"
+          INSTALL_DIR="${WORK_DIR}/install"
+          
+          mkdir -p "$BUILD_DIR" "$INSTALL_DIR"
+          cd "$BUILD_DIR"
+          
+          # Convert install path to Windows format for CMake
+          INSTALL_PREFIX_WIN="$(cygpath -w "$INSTALL_DIR")"
+          
+          echo "Source directory: $SRC_DIR"
+          echo "Build directory: $BUILD_DIR"
+          echo "Install directory: $INSTALL_PREFIX_WIN"
           
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+            -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX_WIN}" \
             -DBUILD_SHARED_LIBS=OFF \
             -DVTK_BUILD_ALL_MODULES=OFF \
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
@@ -159,7 +171,7 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_FiltersSources=YES \
             -DVTK_MODULE_ENABLE_VTK_ImagingCore=YES \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            ../VTK-${VTK_VERSION}
+            "$SRC_DIR"
       
       - name: Build and install VTK
         shell: bash
