@@ -74,12 +74,18 @@ if(DEFINED ENV{CXX})
   set(_CXX_ARG "-DCMAKE_CXX_COMPILER=${_cxx_compiler}")
 endif()
 
-# Determine VTK_DIR for explicit discovery
+# Determine VTK_DIR for explicit discovery (glob for any installed vtk-X.Y)
 set(_vtk_dir "")
 if(DEFINED ENV{VTK_ROOT})
-  set(_vtk_dir "$ENV{VTK_ROOT}/lib/cmake/vtk-9.4")
+  file(GLOB _vtk_cmake_dirs "$ENV{VTK_ROOT}/lib/cmake/vtk-*")
+  if(_vtk_cmake_dirs)
+    list(GET _vtk_cmake_dirs 0 _vtk_dir)
+  endif()
 elseif(DEFINED VTK_ROOT)
-  set(_vtk_dir "${VTK_ROOT}/lib/cmake/vtk-9.4")
+  file(GLOB _vtk_cmake_dirs "${VTK_ROOT}/lib/cmake/vtk-*")
+  if(_vtk_cmake_dirs)
+    list(GET _vtk_cmake_dirs 0 _vtk_dir)
+  endif()
 endif()
 
 ExternalProject_Add(vespa
