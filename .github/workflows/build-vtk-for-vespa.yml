@@ -6,7 +6,7 @@ on:
       vtk_version:
         description: 'VTK version to build'
         required: true
-        default: '9.4.0'
+        default: '9.4.1'
         type: string
   push:
     paths:
@@ -66,7 +66,7 @@ jobs:
       - name: Download VTK source
         shell: bash
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.0' }}"
+          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
           VTK_MINOR="${VTK_VERSION%.*}"
           URL="https://www.vtk.org/files/release/${VTK_MINOR}/VTK-${VTK_VERSION}.tar.gz"
           echo "Downloading $URL"
@@ -77,7 +77,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.0' }}"
+          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
           mkdir -p build install
           cd build
           
@@ -121,7 +121,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: C:\rtools45\usr\bin\bash.exe --login -eo pipefail {0}
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.0' }}"
+          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
           export PATH="/x86_64-w64-mingw32.static.posix/bin:${PATH}"
           TCHAIN=/x86_64-w64-mingw32.static.posix/bin
           export CC="${TCHAIN}/gcc"
@@ -175,7 +175,7 @@ jobs:
       - name: Package VTK
         shell: bash
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.0' }}"
+          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
           VTK_MINOR="${VTK_VERSION%.*}"
           PKG="vtk-${VTK_VERSION}-vespa-${{ matrix.platform }}"
           mkdir -p "${PKG}/include/vtk-${VTK_MINOR}" "${PKG}/lib"
@@ -219,8 +219,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: vtk-for-vespa-${{ github.event.inputs.vtk_version || '9.4.0' }}
-          name: VTK ${{ github.event.inputs.vtk_version || '9.4.0' }} for Vespa
+          tag_name: vtk-for-vespa-${{ github.event.inputs.vtk_version || '9.4.1' }}
+          name: VTK ${{ github.event.inputs.vtk_version || '9.4.1' }} for Vespa
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
