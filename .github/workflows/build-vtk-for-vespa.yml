@@ -33,7 +33,7 @@ jobs:
             platform: windows-x86_64
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
@@ -209,15 +209,15 @@ jobs:
       contents: write
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
       
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: vtk-for-vespa-${{ github.event.inputs.vtk_version || '9.4.0' }}
           name: VTK ${{ github.event.inputs.vtk_version || '9.4.0' }} for Vespa
