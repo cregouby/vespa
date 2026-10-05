@@ -22,7 +22,7 @@ jobs:
       vtk_minor: ${{ steps.version.outputs.vtk_minor }}
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
       - name: Read version from file
         id: version
