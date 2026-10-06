@@ -84,7 +84,7 @@ jobs:
       - name: Restore Vespa cache (Linux/macOS)
         if: runner.os != 'Windows'
         id: cache-vespa-restore-unix
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ matrix.config.vespa-root }}
           key: vespa-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt') }}
@@ -104,7 +104,7 @@ jobs:
 
       - name: Save Vespa cache (Linux/macOS)
         if: always() && runner.os != 'Windows' && steps.cache-vespa-restore-unix.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ matrix.config.vespa-root }}
           key: ${{ steps.cache-vespa-restore-unix.outputs.cache-primary-key }}
@@ -121,7 +121,7 @@ jobs:
       - name: Restore Vespa cache
         if: runner.os == 'Windows'
         id: cache-vespa-restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ matrix.config.vespa-root }}
           key: vespa-${{ runner.os }}-${{ hashFiles('.github/vespa-version.txt') }}
@@ -134,7 +134,7 @@ jobs:
           T="${T//\\//}"
           VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
           mkdir -p "${{ matrix.config.vespa-root }}"
-          cmake -S tools/build-vespa -B "$T/vespa-build" \
+          cmake -G Ninja -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
             -DVESPA_GIT_TAG="$VESPA_TAG" \
             -DCMAKE_BUILD_TYPE=Release
@@ -142,7 +142,7 @@ jobs:
 
       - name: Save Vespa cache
         if: always() && runner.os == 'Windows' && steps.cache-vespa-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ matrix.config.vespa-root }}
           key: ${{ steps.cache-vespa-restore.outputs.cache-primary-key }}
