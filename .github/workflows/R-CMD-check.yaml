@@ -47,7 +47,8 @@ jobs:
           sudo apt-get install -y \
             libcgal-dev libceres-dev cmake ninja-build \
             build-essential libboost-all-dev libeigen3-dev \
-            libx11-dev libgl1-mesa-dev libglu1-mesa-dev
+            libx11-dev libgl1-mesa-dev libglu1-mesa-dev \
+            libvtk9-dev
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
@@ -72,6 +73,41 @@ jobs:
 
       # ── Vespa via tools/build-vespa (includes Eigen/CGAL version patches) ───
 
+      - name: Set VTK root (macOS)
+        if: runner.os == 'macOS'
+        run: echo "VTK_ROOT=$(brew --prefix vtk)" >> $GITHUB_ENV
+
+      - name: Set Vespa root (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> $GITHUB_ENV
+
+      - name: Restore Vespa cache (Linux/macOS)
+        if: runner.os != 'Windows'
+        id: cache-vespa-restore-unix
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ matrix.config.vespa-root }}
+          key: vespa-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt') }}
+
+      - name: Build and install Vespa (Linux/macOS)
+        if: runner.os != 'Windows' && steps.cache-vespa-restore-unix.outputs.cache-hit != 'true'
+        run: |
+          T=$(mktemp -d)
+          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
+          sudo mkdir -p "${{ matrix.config.vespa-root }}"
+          sudo chown "$USER" "${{ matrix.config.vespa-root }}"
+          cmake -S tools/build-vespa -B "$T/vespa-build" \
+            -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
+            -DVESPA_GIT_TAG="$VESPA_TAG" \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$T/vespa-build"
+
+      - name: Save Vespa cache (Linux/macOS)
+        if: always() && runner.os != 'Windows' && steps.cache-vespa-restore-unix.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ matrix.config.vespa-root }}
+          key: ${{ steps.cache-vespa-restore-unix.outputs.cache-primary-key }}
 
       - name: Set Vespa root (Windows)
         if: runner.os == 'Windows'
