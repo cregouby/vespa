@@ -44,9 +44,6 @@ print_install_instructions() {
   echo ""
 }
 
-# Required VTK modules (must all be present in system VTK)
-REQUIRED_VTK_MODULES="vtkIOGeometry vtkFiltersCore vtkFiltersGeneral vtkFiltersGeometry"
-
 # --- Check for CGAL ---
 CGAL_INC=""
 if [ -f /usr/include/CGAL/config.h ]; then
@@ -70,20 +67,16 @@ echo ">> Checking for CGAL... OK (found in $CGAL_INC)"
 VTK_FOUND=false
 VTK_SOURCE=""
 
-# Strategy 1: System VTK with all required modules
+# Strategy 1: System VTK via pkg-config (monolithic package is fine)
 if command -v pkg-config >/dev/null 2>&1; then
   for vtk_pkg in vtk-9.4 vtk-9.3 vtk-9.2 vtk-9.1 vtk; do
     if pkg-config --exists "$vtk_pkg" 2>/dev/null; then
       VTK_VERSION=$(pkg-config --modversion "$vtk_pkg")
-      # Check if all required modules are available
-      if pkg-config --exists "$REQUIRED_VTK_MODULES" 2>/dev/null; then
-        VTK_FOUND=true
-        VTK_SOURCE="system"
-        echo ">> Checking for VTK... OK (system VTK $VTK_VERSION with all modules)"
-        break
-      else
-        echo ">> System VTK $VTK_VERSION found but missing required modules"
-      fi
+      VTK_FOUND=true
+      VTK_SOURCE="system"
+      VTK_PKG="$vtk_pkg"
+      echo ">> Checking for VTK... OK (system VTK $VTK_VERSION)"
+      break
     fi
   done
 fi
@@ -299,12 +292,18 @@ fi
 
 # --- VTK flags ---
 if [ "$VTK_SOURCE" = "system" ]; then
-  VTK_CPPFLAGS=$(pkg-config --cflags vtk-9.4 2>/dev/null || pkg-config --cflags vtk-9.3 2>/dev/null || pkg-config --cflags vtk)
-  VTK_LIBS=$(pkg-config --libs vtk-9.4 2>/dev/null || pkg-config --libs vtk-9.3 2>/dev/null || pkg-config --libs vtk)
+  VTK_CPPFLAGS=$(pkg-config --cflags "$VTK_PKG")
+  VTK_LIBS=$(pkg-config --libs "$VTK_PKG")
 else
-  # Downloaded VTK
+  # Downloaded VTK: enumerate all static archives so the linker actually links them
+  VTK_LIBDIR="$(pwd)/inst/vtk/lib"
   VTK_CPPFLAGS="-I$(pwd)/inst/vtk/include/vtk-${VTK_MINOR}"
-  VTK_LIBS="-L$(pwd)/inst/vtk/lib"
+  VTK_LIBS="-L${VTK_LIBDIR}"
+  for _a in "${VTK_LIBDIR}"/libvtk*.a; do
+    [ -e "$_a" ] || continue
+    _n="${_a##*/}"; _n="${_n#lib}"; _n="${_n%.a}"
+    VTK_LIBS="${VTK_LIBS} -l${_n}"
+  done
 fi
 
 # --- Export macros ---

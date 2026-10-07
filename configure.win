@@ -35,6 +35,12 @@ fi
 
 echo ">> Vespa libs: ${VESPA_LIBS}"
 
+# Copy Vespa DLLs to inst/libs/x64/ so Windows finds them alongside vespa.dll
+mkdir -p inst/libs/x64
+for dll in "${VESPA_ROOT}"/bin/lib*.dll; do
+  [ -f "$dll" ] && cp "$dll" inst/libs/x64/
+done
+
 # Generate Makevars.win
 cat > src/Makevars.win <<EOF
 VTK_CPPFLAGS = \$(shell "\$(R_HOME)/bin\$(R_ARCH_BIN)/Rscript" --vanilla ../tools/configure.R --cppflags)

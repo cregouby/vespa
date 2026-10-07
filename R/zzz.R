@@ -1,14 +1,18 @@
-# Safety net for bundled Vespa libs on Linux (rpath handles macOS)
 .onLoad <- function(libname, pkgname) {
-  vespa_lib <- system.file("vespa", "lib", package = pkgname)
-  if (
-    nzchar(vespa_lib) &&
-      dir.exists(vespa_lib) &&
-      Sys.info()[["sysname"]] == "Linux"
-  ) {
-    old <- Sys.getenv("LD_LIBRARY_PATH", unset = "")
-    new <- if (nzchar(old)) paste(vespa_lib, old, sep = ":") else vespa_lib
-    Sys.setenv(LD_LIBRARY_PATH = new)
+  sysname <- Sys.info()[["sysname"]]
+  if (sysname == "Linux") {
+    vespa_lib <- system.file("vespa", "lib", package = pkgname)
+    if (nzchar(vespa_lib) && dir.exists(vespa_lib)) {
+      old <- Sys.getenv("LD_LIBRARY_PATH", unset = "")
+      new <- if (nzchar(old)) paste(vespa_lib, old, sep = ":") else vespa_lib
+      Sys.setenv(LD_LIBRARY_PATH = new)
+    }
+  } else if (sysname == "Windows") {
+    vespa_bin <- system.file("vespa", "bin", package = pkgname)
+    if (nzchar(vespa_bin) && dir.exists(vespa_bin)) {
+      old <- Sys.getenv("PATH")
+      Sys.setenv(PATH = paste(vespa_bin, old, sep = ";"))
+    }
   }
 }
 
