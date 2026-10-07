@@ -22,10 +22,9 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-latest,  vespa-root: /opt/vespa }
-          - { os: macos-latest,   vespa-root: /opt/vespa }
-          - { os: windows-latest, vespa-root: D:/a/vespa, experimental: true }
-
+          - { os: ubuntu-latest }
+          - { os: macos-latest }
+          - { os: windows-latest, experimental: true }
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
@@ -71,60 +70,35 @@ jobs:
             mingw-w64-ucrt-x86_64-ninja `
             mingw-w64-ucrt-x86_64-vtk
 
-      # ── Vespa via tools/build-vespa (includes Eigen/CGAL version patches) ───
-
+      # ── Vespa pre-build into inst/vespa (bundled, Priority 1 in configure) ──
+      
       - name: Set VTK root (macOS)
         if: runner.os == 'macOS'
         run: echo "VTK_ROOT=$(brew --prefix vtk)" >> $GITHUB_ENV
 
-      - name: Set Vespa root (Linux/macOS)
-        if: runner.os != 'Windows'
-        run: echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> $GITHUB_ENV
-
-      - name: Restore Vespa cache (Linux/macOS)
-        if: runner.os != 'Windows'
-        id: cache-vespa-restore-unix
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ matrix.config.vespa-root }}
-          key: vespa-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt') }}
-
-      - name: Build and install Vespa (Linux/macOS)
-        if: runner.os != 'Windows' && steps.cache-vespa-restore-unix.outputs.cache-hit != 'true'
-        run: |
-          T=$(mktemp -d)
-          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
-          sudo mkdir -p "${{ matrix.config.vespa-root }}"
-          sudo chown "$USER" "${{ matrix.config.vespa-root }}"
-          cmake -S tools/build-vespa -B "$T/vespa-build" \
-            -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
-            -DVESPA_GIT_TAG="$VESPA_TAG" \
-            -DCMAKE_BUILD_TYPE=Release
-          cmake --build "$T/vespa-build"
-
-      - name: Save Vespa cache (Linux/macOS)
-        if: always() && runner.os != 'Windows' && steps.cache-vespa-restore-unix.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ matrix.config.vespa-root }}
-          key: ${{ steps.cache-vespa-restore-unix.outputs.cache-primary-key }}
-
-      - name: Set Vespa root (Windows)
+      - name: Set compiler env (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> $env:GITHUB_ENV
           echo "VTK_ROOT=C:/rtools45/ucrt64" >> $env:GITHUB_ENV
           echo "CC=gcc" >> $env:GITHUB_ENV
           echo "CXX=g++" >> $env:GITHUB_ENV
 
-      - name: Restore Vespa cache
-        if: runner.os == 'Windows'
-        id: cache-vespa-restore
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ matrix.config.vespa-root }}
-          key: vespa-${{ runner.os }}-${{ hashFiles('.github/vespa-version.txt') }}
+      - name: Restore Vespa bundle cache
+        id: cache-vespa-bundle
+        uses: actions/cache/restore@v7
+
+      - name: Build and install Vespa (Linux/macOS)
+        if: runner.os != 'Windows' && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
+        run: |
+          T=$(mktemp -d)
+          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
+          mkdir -p inst/vespa
+          cmake -S tools/build-vespa -B "$T/vespa-build" \
+            -DINSTALL_PREFIX="$PWD/inst/vespa" \
+            -DVESPA_GIT_TAG="$VESPA_TAG" \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$T/vespa-build"
 
       - name: Build and install Vespa (Windows)
         if: runner.os == 'Windows' && steps.cache-vespa-restore.outputs.cache-hit != 'true'
