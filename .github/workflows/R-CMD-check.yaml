@@ -86,7 +86,7 @@ jobs:
 
       - name: Restore Vespa bundle cache
         id: cache-vespa-bundle
-        uses: actions/cache/restore@v7
+        uses: actions/cache/restore@v6
 
       - name: Build and install Vespa (Linux/macOS)
         if: runner.os != 'Windows' && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
