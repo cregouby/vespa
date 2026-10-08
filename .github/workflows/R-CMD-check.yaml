@@ -110,7 +110,7 @@ jobs:
           T="${{ runner.temp }}"
           T="${T//\\//}"
           VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
-          mkdir -p "${{ matrix.config.vespa-root }}"
+          mkdir -p "$T/vespa-build"
           cmake -G Ninja -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
             -DVESPA_GIT_TAG="$VESPA_TAG" \
