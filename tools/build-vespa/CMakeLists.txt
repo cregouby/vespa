@@ -107,20 +107,18 @@ ExternalProject_Add(vespa
   # use CMAKE_CACHE_ARGS for list management in CMakeCache.txt
   # this allow windows unmanaged ";" transformation workaround, 
   # then force exportation of all symbols to the dll, excuding static archives
-  CMAKE_CACHE_ARGS
-    -DCMAKE_PREFIX_PATH:STRING=${_prefixes}
-    -DCMAKE_SHARED_LINKER_FLAGS:STRING=${_shared_linker_flags}
-    -DVTK_DIR:PATH=${_vtk_dir} 
-        
   CMAKE_ARGS
-    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
     -DBUILD_PYTHON_WRAPPERS=OFF
-    -DBUILD_SHARED_LIBS=OFF
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
-    ${_CC_ARG}
-    ${_CXX_ARG}
+    -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+    -DCMAKE_POSITION_INDEPENDENT_CODE=${CMAKE_POSITION_INDEPENDENT_CODE}
+    -GNinja
+  CMAKE_CACHE_ARGS
+    # retransmis tel quel au sous-projet ; s'étend à la config du superbuild
+    -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
+    # ceinture + bretelles : chemin explicite du vtk-config.cmake
+    -DVTK_DIR:PATH=${VTK_ROOT}/lib/cmake/vtk-9.4
 
   # Parallel build
   BUILD_COMMAND

@@ -215,23 +215,28 @@ jobs:
       - name: Package VTK
         shell: bash
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
-          VTK_MINOR="${VTK_VERSION%.*}"
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
+          VTK_MINOR="${{ needs.read-version.outputs.vtk_minor }}"
           PKG="vtk-${VTK_VERSION}-vespa-${{ matrix.platform }}"
-          mkdir -p "${PKG}/include/vtk-${VTK_MINOR}" "${PKG}/lib"
-          
-          SRC_INC=$(find install/include -maxdepth 1 -name "vtk-*" -type d | sort -V | tail -1)
-          if [ -n "${SRC_INC}" ]; then
-            cp -R "${SRC_INC}/"* "${PKG}/include/vtk-${VTK_MINOR}/"
-          fi
-          find install/lib -name "*.a" -exec cp {} "${PKG}/lib/" \;
-          
+          mkdir -p "${PKG}"
+
+          # Arborescence d'install CMake COMPLÈTE :
+          # include/vtk-X.Y + lib/*.a + lib/cmake/vtk-X.Y/  (indispensable à find_package)
+          cp -R install/include "${PKG}/include"
+          cp -R install/lib     "${PKG}/lib"
+          [ -d install/share ] && cp -R install/share "${PKG}/share" || true
+
+          # Sanity check : le package CMake DOIT être dans le tarball
+          test -f "${PKG}/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" || {
+            echo "ERREUR: vtk-config.cmake absent de l'arborescence packagée"; exit 1; }
+          ls "${PKG}/lib"/*.a | head -3
+
           if [ "${{ runner.os }}" = "Windows" ]; then
             zip -r "${PKG}.zip" "${PKG}"
           else
             tar -czf "${PKG}.tar.gz" "${PKG}"
           fi
-      
+          
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
