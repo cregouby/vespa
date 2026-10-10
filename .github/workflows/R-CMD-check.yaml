@@ -22,12 +22,13 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-latest }
-          - { os: macos-latest }
-          - { os: windows-latest, experimental: true }
+          - { os: ubuntu-latest,  vtk-root: /home/runner/vtk-9.4, vespa-root: /opt/vespa  }
+          - { os: macos-latest,                                   vespa-root: /opt/vespa  }
+          - { os: windows-latest, vtk-root: D:/a/vtk-9.4, vespa-root: D:/a/vespa, experimental: true }
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      CMAKE_GENERATOR: Ninja
       RGL_USE_NULL: true
 
     steps:
@@ -74,55 +75,55 @@ jobs:
       
       - name: Set VTK root (macOS)
         if: runner.os == 'macOS'
-        run: echo "VTK_ROOT=$(brew --prefix vtk)" >> $GITHUB_ENV
+        run: |
+          echo "VTK_ROOT=$(brew --prefix vtk)" >> $GITHUB_ENV
+          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
 
       - name: Set compiler env (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           echo "VTK_ROOT=C:/rtools45/ucrt64" >> $env:GITHUB_ENV
+          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
+          # Ensure cmake sub-processes (ExternalProject in tools/build-vespa) use MinGW
           echo "CC=gcc" >> $env:GITHUB_ENV
           echo "CXX=g++" >> $env:GITHUB_ENV
-
+          # DLL search path for dyn.load() within R CMD check / tests
+          echo "${{ matrix.config.vespa-root }}/bin" >> $env:GITHUB_PATH
+          echo "C:/rtools45/ucrt64/bin" >> $env:GITHUB_PATH
+          
       - name: Restore Vespa bundle cache
         id: cache-vespa-bundle
         uses: actions/cache/restore@v6
         with:
-          path: inst/vespa
+          path: ${{ matrix.config.vespa-root }}
           key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt') }}
 
-      - name: Build and install Vespa (Linux/macOS)
-        if: runner.os != 'Windows' && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
-        run: |
-          T=$(mktemp -d)
-          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
-          mkdir -p inst/vespa
-          cmake -S tools/build-vespa -B "$T/vespa-build" \
-            -DINSTALL_PREFIX="$PWD/inst/vespa" \
-            -DVESPA_GIT_TAG="$VESPA_TAG" \
-            -DCMAKE_BUILD_TYPE=Release
-          cmake --build "$T/vespa-build"
-
-      - name: Build and install Vespa (Windows)
-        if: runner.os == 'Windows' && steps.cache-vespa-restore.outputs.cache-hit != 'true'
+      - name: Build and install Vespa
+        if: steps.cache-vespa-bundle.outputs.cache-hit != 'true'
         shell: bash
         run: |
           T="${{ runner.temp }}"
           T="${T//\\//}"
           VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
-          mkdir -p "$T/vespa-build"
-          cmake -G Ninja -S tools/build-vespa -B "$T/vespa-build" \
+          # Pre-create install prefix on Unix (needs elevated permissions)
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            sudo mkdir -p "${{ matrix.config.vespa-root }}"
+            sudo chown "$USER" "${{ matrix.config.vespa-root }}"
+          fi
+          cmake -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
             -DVESPA_GIT_TAG="$VESPA_TAG" \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="${{ matrix.config.vtk-root }}"
           cmake --build "$T/vespa-build"
 
       - name: Save Vespa cache
-        if: always() && runner.os == 'Windows' && steps.cache-vespa-restore.outputs.cache-hit != 'true'
+        if: always() && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ matrix.config.vespa-root }}
-          key: ${{ steps.cache-vespa-restore.outputs.cache-primary-key }}
+          key: ${{ steps.cache-vespa-bundle.outputs.cache-primary-key }}
             
       # ── R check ─────────────────────────────────────────────────────────────
 
