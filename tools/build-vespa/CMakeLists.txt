@@ -3,89 +3,94 @@ project(VespaBuild NONE)
 
 include(ExternalProject)
 
-# Installation prefix for Vespa build artifacts.
-# When invoked from the configure script, this is set to <pkg_source>/inst/vespa.
+# ---------------------------------------------------------------------------
+# Options avec défauts sûrs : statique + PIC, pour que tout soit plié dans
+# vespa.so (une seule copie des objets VTK dans le processus R).
+# ---------------------------------------------------------------------------
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type propagated to Vespa")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build Vespa as shared libraries")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON
+    CACHE BOOL "PIC (required: static libs linked into vespa.so)")
+
 set(INSTALL_PREFIX "${CMAKE_BINARY_DIR}/vespa-install"
     CACHE PATH "Destination directory for Vespa headers and libraries")
+set(VESPA_GIT_TAG "v1.0" CACHE STRING "Vespa git tag or commit hash to build")
 
-# Git tag or commit read from .github/vespa-version.txt and forwarded by configure.
-set(VESPA_GIT_TAG "v1.0"
-    CACHE STRING "Vespa git tag or commit hash to build")
-
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-
-# Build CMAKE_PREFIX_PATH for the ExternalProject (merge all sources).
-set(_prefixes "${CMAKE_PREFIX_PATH}")
-
-# Add common VTK installation paths
-if(UNIX AND NOT APPLE)
-  list(APPEND _prefixes "/usr")
-  list(APPEND _prefixes "/usr/local")
-elseif(APPLE)
-  list(APPEND _prefixes "/opt/homebrew")
-  list(APPEND _prefixes "/usr/local")
+# ---------------------------------------------------------------------------
+# Résolution de VTK_ROOT : variable cache d'abord, sinon environnement (CI).
+# ---------------------------------------------------------------------------
+set(VTK_ROOT "" CACHE PATH "Prebuilt VTK install prefix")
+if(NOT VTK_ROOT AND DEFINED ENV{VTK_ROOT})
+  set(VTK_ROOT "$ENV{VTK_ROOT}")
 endif()
 
-# Honour VTK_ROOT if set
-if(DEFINED ENV{VTK_ROOT} AND NOT "$ENV{VTK_ROOT}" IN_LIST _prefixes)
-  list(APPEND _prefixes "$ENV{VTK_ROOT}")
-elseif(DEFINED VTK_ROOT AND NOT "${VTK_ROOT}" IN_LIST _prefixes)
+message(STATUS "Superbuild VTK_ROOT    : '${VTK_ROOT}'")
+message(STATUS "Superbuild INSTALL     : '${INSTALL_PREFIX}'")
+message(STATUS "Superbuild SHARED / PIC: ${BUILD_SHARED_LIBS} / ${CMAKE_POSITION_INDEPENDENT_CODE}")
+
+# ---------------------------------------------------------------------------
+# CMAKE_PREFIX_PATH du sous-projet : VTK_ROOT d'abord, puis chemins système.
+# ---------------------------------------------------------------------------
+set(_prefixes "${CMAKE_PREFIX_PATH}")
+if(VTK_ROOT)
   list(APPEND _prefixes "${VTK_ROOT}")
 endif()
-
-
+if(UNIX AND NOT APPLE)
+  list(APPEND _prefixes "/usr" "/usr/local")
+elseif(APPLE)
+  list(APPEND _prefixes "/opt/homebrew" "/usr/local")
+endif()
 if(WIN32)
-  # Add MinGW UCRT path from Rtools (where pacman installs CGAL, Ceres, etc.)
   list(APPEND _prefixes "C:/rtools45/ucrt64")
 endif()
-
-# Build platform-specific shared linker flags
-set(_shared_linker_flags "")
-if(WIN32)
-  # MinGW/GNU ld: export all symbols but exclude static library symbols
-  set(_shared_linker_flags "-Wl,--export-all-symbols,--exclude-libs=ALL")
+if(_prefixes)
+  list(REMOVE_DUPLICATES _prefixes)
 endif()
-# Linux/macOS: leave empty (default visibility is fine)
+message(STATUS "Superbuild sub-prefixes: '${_prefixes}'")
 
-# Detect whether the tag looks like a raw hash (shallow clone only works with named refs).
+# Échapper les ';' : sinon la liste éclate en plusieurs items de
+# CMAKE_CACHE_ARGS et seul le premier chemin serait transmis.
+string(REPLACE ";" "\\;" _prefixes_escaped "${_prefixes}")
+
+# ---------------------------------------------------------------------------
+# VTK_DIR explicite (ceinture + bretelles) + échec précoce lisible si le
+# tarball n'est pas un arbre `cmake --install` complet.
+# ---------------------------------------------------------------------------
+set(_vtk_cache_args "")
+if(VTK_ROOT)
+  file(GLOB _vtk_cmake_dirs "${VTK_ROOT}/lib/cmake/vtk-*")
+  if(_vtk_cmake_dirs)
+    list(SORT _vtk_cmake_dirs)
+    list(GET _vtk_cmake_dirs 0 _vtk_dir)
+    message(STATUS "Superbuild vtk-config  : '${_vtk_dir}'")
+    list(APPEND _vtk_cache_args "-DVTK_DIR:PATH=${_vtk_dir}")
+  else()
+    message(FATAL_ERROR
+      "VTK_ROOT='${VTK_ROOT}' est défini mais aucun lib/cmake/vtk-*/vtk-config.cmake "
+      "n'y a été trouvé. Le tarball doit être un arbre `cmake --install` complet "
+      "(include/ + lib/*.a + lib/cmake/vtk-X.Y/).")
+  endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# Propagation des compilateurs de la toolchain R (premier token uniquement).
+# ---------------------------------------------------------------------------
+set(_compiler_args "")
+if(DEFINED ENV{CC})
+  string(REGEX REPLACE "^[ ]*([^ ]+).*" "\\1" _cc "$ENV{CC}")
+  list(APPEND _compiler_args "-DCMAKE_C_COMPILER=${_cc}")
+endif()
+if(DEFINED ENV{CXX})
+  string(REGEX REPLACE "^[ ]*([^ ]+).*" "\\1" _cxx "$ENV{CXX}")
+  list(APPEND _compiler_args "-DCMAKE_CXX_COMPILER=${_cxx}")
+endif()
+
+# Clone shallow uniquement pour les refs nommées, pas les hashes bruts.
 string(LENGTH "${VESPA_GIT_TAG}" _tag_len)
 if(_tag_len GREATER 15 AND "${VESPA_GIT_TAG}" MATCHES "^[0-9a-f]+$")
   set(_git_shallow FALSE)
 else()
   set(_git_shallow TRUE)
-endif()
-
-# Forward the compilers chosen by R's toolchain so the ABI matches.
-# R exports CC/CXX as "<compiler> <flags>" (e.g. "gcc -std=gnu2x"), but CMake
-# requires CMAKE_<LANG>_COMPILER to be a single executable: keep only the
-# first token. The -std flags are irrelevant for the external Vespa build
-# (it sets its own C++ standard); only the compiler family matters for ABI.
-set(_CC_ARG "")
-set(_CXX_ARG "")
-
-if(DEFINED ENV{CC})
-  string(REGEX REPLACE "^[ ]*([^ ]+).*" "\\1" _cc_compiler "$ENV{CC}")
-  set(_CC_ARG "-DCMAKE_C_COMPILER=${_cc_compiler}")
-endif()
-
-if(DEFINED ENV{CXX})
-  string(REGEX REPLACE "^[ ]*([^ ]+).*" "\\1" _cxx_compiler "$ENV{CXX}")
-  set(_CXX_ARG "-DCMAKE_CXX_COMPILER=${_cxx_compiler}")
-endif()
-
-# Determine VTK_DIR for explicit discovery (glob for any installed vtk-X.Y)
-set(_vtk_dir "")
-if(DEFINED ENV{VTK_ROOT})
-  file(GLOB _vtk_cmake_dirs "$ENV{VTK_ROOT}/lib/cmake/vtk-*")
-  if(_vtk_cmake_dirs)
-    list(GET _vtk_cmake_dirs 0 _vtk_dir)
-  endif()
-elseif(DEFINED VTK_ROOT)
-  file(GLOB _vtk_cmake_dirs "${VTK_ROOT}/lib/cmake/vtk-*")
-  if(_vtk_cmake_dirs)
-    list(GET _vtk_cmake_dirs 0 _vtk_dir)
-  endif()
 endif()
 
 ExternalProject_Add(vespa
@@ -94,8 +99,6 @@ ExternalProject_Add(vespa
   GIT_SHALLOW    ${_git_shallow}
   GIT_PROGRESS   TRUE
 
-  # Eigen 5 (Homebrew 2025+) is API-compatible with 3.x but its cmake config
-  # rejects find_package(Eigen3 3.2.0). Widen the version range so both work.
   PATCH_COMMAND
     sed -i.bak
       -e "s|find_package(Eigen3 3\\.2\\.0 REQUIRED|find_package(Eigen3 REQUIRED|g"
@@ -104,32 +107,25 @@ ExternalProject_Add(vespa
       <SOURCE_DIR>/CMakeLists.txt &&
     ${CMAKE_COMMAND} -E rm -f <SOURCE_DIR>/CMakeLists.txt.bak
 
-  # use CMAKE_CACHE_ARGS for list management in CMakeCache.txt
-  # this allow windows unmanaged ";" transformation workaround, 
-  # then force exportation of all symbols to the dll, excuding static archives
+  # Pas de -GNinja ici : le générateur est hérité du superbuild
+  # (le doublon `-GNinja -GNinja` des logs venait de la redondance).
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
     -DBUILD_PYTHON_WRAPPERS=OFF
     -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
     -DCMAKE_POSITION_INDEPENDENT_CODE=${CMAKE_POSITION_INDEPENDENT_CODE}
-    -GNinja
+    ${_compiler_args}
+
   CMAKE_CACHE_ARGS
-    # retransmis tel quel au sous-projet ; s'étend à la config du superbuild
-    -DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}
-    # ceinture + bretelles : chemin explicite du vtk-config.cmake
-    -DVTK_DIR:PATH=${VTK_ROOT}/lib/cmake/vtk-9.4
+    -DCMAKE_PREFIX_PATH:PATH=${_prefixes_escaped}
+    ${_vtk_cache_args}
 
-  # Parallel build
   BUILD_COMMAND
-    ${CMAKE_COMMAND} --build <BINARY_DIR>
-    --config Release
-    --parallel
-
+    ${CMAKE_COMMAND} --build <BINARY_DIR> --config Release --parallel
   INSTALL_COMMAND
     ${CMAKE_COMMAND} --install <BINARY_DIR> --config Release
 
-  # Show cmake output so the user sees progress during R CMD INSTALL
   LOG_CONFIGURE FALSE
   LOG_BUILD     FALSE
   LOG_INSTALL   FALSE

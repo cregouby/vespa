@@ -108,26 +108,20 @@ jobs:
         if: steps.cache-vespa-bundle.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          T="${{ runner.temp }}"
-          T="${T//\\//}"
-          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
-          
-          # Pre-create install prefix on Unix (needs elevated permissions)
+          set -e
+          T="${RUNNER_TEMP//\\//}"
+          VESPA_TAG="$(tr -d '[:space:]' < .github/vespa-version.txt)"
           if [ "$RUNNER_OS" != "Windows" ]; then
             sudo mkdir -p "${{ matrix.config.vespa-root }}"
             sudo chown "$USER" "${{ matrix.config.vespa-root }}"
           fi
-          
           cmake -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
-            -DVESPA_GIT_TAG="$VESPA_TAG" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=ON
-          
-          cmake --build "$T/vespa-build"
+            -DVESPA_GIT_TAG="$VESPA_TAG"
+          cmake --build "$T/vespa-build" --parallel
 
       - name: Save Vespa cache
-        if: always() && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
+        if: success() && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ matrix.config.vespa-root }}
