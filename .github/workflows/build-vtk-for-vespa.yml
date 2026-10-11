@@ -228,9 +228,9 @@ jobs:
           test -f "${PKG}/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" || {
             echo "ERREUR: vtk-config.cmake absent de l'arborescence packagée"; exit 1; }
 
-          # Stats without pipe (insensible à SIGPIPE / pipefail)
+          # Stats without pipe (resilient to SIGPIPE / pipefail)
           set -- "${PKG}"/lib/*.a
-          echo ">> $# archives statiques; exemples :"
+          echo ">> $# static archives ; for examples :"
           for a in "$1" "$2" "$3"; do [ -e "$a" ] && echo "   $a"; done
 
           if [ "${{ runner.os }}" = "Windows" ]; then
@@ -254,20 +254,36 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
-      - uses: actions/checkout@v7
-      
+      # no need for checkout : softprops/action-gh-release uses GITHUB_REPOSITORY
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
-      
+
+      - name: Verify release completeness (atomic publish)
+        shell: bash
+        run: |
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
+          MISSING=""
+          for p in linux-x86_64 linux-aarch64 darwin-arm64 darwin-x86_64 windows-x86_64; do
+            if   [ -s "artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.tar.gz" ]; then
+              echo ">> OK  ${p} (tar.gz)"
+            elif [ -s "artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.zip" ]; then
+              echo ">> OK  ${p} (zip)"
+            else
+              echo ">> MANQUANT ou vide : ${p}"
+              MISSING="${MISSING} ${p}"
+            fi
+          done
+          [ -z "${MISSING}" ] || { echo "ERREUR: release incomplète :${MISSING}"; exit 1; }
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: vtk-for-vespa-${{ github.event.inputs.vtk_version || '9.4.1' }}
-          name: VTK ${{ github.event.inputs.vtk_version || '9.4.1' }} for Vespa
+          tag_name: vtk-for-vespa-${{ needs.read-version.outputs.vtk_version }}
+          name: VTK ${{ needs.read-version.outputs.vtk_version }} for Vespa
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
