@@ -220,16 +220,18 @@ jobs:
           PKG="vtk-${VTK_VERSION}-vespa-${{ matrix.platform }}"
           mkdir -p "${PKG}"
 
-          # Arborescence d'install CMake COMPLÈTE :
-          # include/vtk-X.Y + lib/*.a + lib/cmake/vtk-X.Y/  (indispensable à find_package)
+          # include/vtk-X.Y + lib/*.a + lib/cmake/vtk-X.Y/  (required by find_package)
           cp -R install/include "${PKG}/include"
           cp -R install/lib     "${PKG}/lib"
           [ -d install/share ] && cp -R install/share "${PKG}/share" || true
 
-          # Sanity check : le package CMake DOIT être dans le tarball
           test -f "${PKG}/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" || {
             echo "ERREUR: vtk-config.cmake absent de l'arborescence packagée"; exit 1; }
-          ls "${PKG}/lib"/*.a | head -3
+
+          # Stats without pipe (insensible à SIGPIPE / pipefail)
+          set -- "${PKG}"/lib/*.a
+          echo ">> $# archives statiques; exemples :"
+          for a in "$1" "$2" "$3"; do [ -e "$a" ] && echo "   $a"; done
 
           if [ "${{ runner.os }}" = "Windows" ]; then
             zip -r "${PKG}.zip" "${PKG}"
