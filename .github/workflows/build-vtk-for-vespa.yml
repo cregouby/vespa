@@ -250,7 +250,7 @@ jobs:
   
   release:
     name: Create Release
-    needs: build-vtk
+    needs: [build-vtk, read-version]
     runs-on: ubuntu-latest
     permissions:
       contents: write
