@@ -215,52 +215,70 @@ jobs:
       - name: Package VTK
         shell: bash
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
-          VTK_MINOR="${VTK_VERSION%.*}"
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
+          VTK_MINOR="${{ needs.read-version.outputs.vtk_minor }}"
           PKG="vtk-${VTK_VERSION}-vespa-${{ matrix.platform }}"
-          mkdir -p "${PKG}/include/vtk-${VTK_MINOR}" "${PKG}/lib"
-          
-          SRC_INC=$(find install/include -maxdepth 1 -name "vtk-*" -type d | sort -V | tail -1)
-          if [ -n "${SRC_INC}" ]; then
-            cp -R "${SRC_INC}/"* "${PKG}/include/vtk-${VTK_MINOR}/"
-          fi
-          find install/lib -name "*.a" -exec cp {} "${PKG}/lib/" \;
-          
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            zip -r "${PKG}.zip" "${PKG}"
-          else
-            tar -czf "${PKG}.tar.gz" "${PKG}"
-          fi
-      
+          mkdir -p "${PKG}"
+
+          # include/vtk-X.Y + lib/*.a + lib/cmake/vtk-X.Y/  (required by find_package)
+          cp -R install/include "${PKG}/include"
+          cp -R install/lib     "${PKG}/lib"
+          [ -d install/share ] && cp -R install/share "${PKG}/share" || true
+
+          test -f "${PKG}/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" || {
+            echo "ERREUR: vtk-config.cmake absent de l'arborescence packagée"; exit 1; }
+
+          # Stats without pipe (resilient to SIGPIPE / pipefail)
+          set -- "${PKG}"/lib/*.a
+          echo ">> $# static archives ; for examples :"
+          for a in "$1" "$2" "$3"; do [ -e "$a" ] && echo "   $a"; done
+
+          tar -czf "${PKG}.tar.gz" "${PKG}"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: vtk-${{ matrix.platform }}
           path: |
             vtk-*-vespa-*.tar.gz
-            vtk-*-vespa-*.zip
           retention-days: 7
   
   release:
     name: Create Release
-    needs: build-vtk
+    needs: [read-version, build-vtk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
-      - uses: actions/checkout@v7
-      
+      # no need for checkout : softprops/action-gh-release uses GITHUB_REPOSITORY
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
-      
+
+      - name: Verify release completeness (atomic publish)
+        shell: bash
+        run: |
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
+          MISSING=""
+          for p in linux-x86_64 linux-aarch64 darwin-arm64 darwin-x86_64 windows-x86_64; do
+            if   [ -s "artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.tar.gz" ]; then
+              echo ">> OK  ${p} (tar.gz)"
+            elif [ -s "artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.zip" ]; then
+              echo ">> OK  ${p} (zip)"
+            else
+              echo ">> MISSING or empty : ${p}"
+              MISSING="${MISSING} ${p}"
+            fi
+          done
+          [ -z "${MISSING}" ] || { echo "ERROR: incomplete release :${MISSING}"; exit 1; }
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: vtk-for-vespa-${{ github.event.inputs.vtk_version || '9.4.1' }}
-          name: VTK ${{ github.event.inputs.vtk_version || '9.4.1' }} for Vespa
+          tag_name: vtk-for-vespa-${{ needs.read-version.outputs.vtk_version }}
+          name: VTK ${{ needs.read-version.outputs.vtk_version }} for Vespa
           files: |
             artifacts/**/*.tar.gz
             artifacts/**/*.zip
