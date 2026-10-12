@@ -19,9 +19,16 @@ set(VESPA_GIT_TAG "v1.0" CACHE STRING "Vespa git tag or commit hash to build")
 # ---------------------------------------------------------------------------
 # Résolution de VTK_ROOT : variable cache d'abord, sinon environnement (CI).
 # ---------------------------------------------------------------------------
-set(VTK_ROOT "" CACHE PATH "Prebuilt VTK install prefix")
+set(VTK_ROOT "" CACHE PATH "Prebuilt VTK prefix")
 if(NOT VTK_ROOT AND DEFINED ENV{VTK_ROOT})
   set(VTK_ROOT "$ENV{VTK_ROOT}")
+endif()
+if(NOT VTK_ROOT)
+  message(FATAL_ERROR "VTK_ROOT vide : passez -DVTK_ROOT=<prefix VTK> au superbuild.")
+endif()
+file(GLOB _vtk_cfg "${VTK_ROOT}/lib/cmake/vtk-*/vtk-config.cmake")
+if(NOT _vtk_cfg)
+  message(FATAL_ERROR "vtk-config.cmake introuvable sous ${VTK_ROOT} — bundle incomplet.")
 endif()
 
 message(STATUS "Superbuild VTK_ROOT    : '${VTK_ROOT}'")

@@ -56,7 +56,6 @@ jobs:
           echo "DISPLAY=:0" >> $GITHUB_ENV
 
       # pacman from Rtools is on PATH after setup-r
-      # NOTE: Do NOT install mingw-w64-ucrt-x86_64-vtk to avoid dependency conflicts
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -70,19 +69,34 @@ jobs:
 
       # ── Set environment variables ─────────────────────────────────────────────
       
-      - name: Set VESPA_ROOT
+      - name: Export VESPA_ROOT
+        shell: bash
+        run: echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
+
+      - name: Fetch prebuilt VTK
+        if: steps.cache-vtk.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
-
+          set -e
+          case "$RUNNER_OS" in
+            Linux)   P=linux-x86_64;   ROOT=/opt/vtk-9.4;   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
+            macOS)   P=darwin-arm64;   ROOT=/opt/vtk-9.4;   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
+            Windows) P=windows-x86_64; ROOT="D:/a/vtk-9.4"; mkdir -p "$ROOT" ;;
+          esac
+          curl -fsSL "https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${P}.tar.gz" -o vtk.tar.gz
+          tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
+          rm vtk.tar.gz
+          CFG="$(find "$ROOT" -maxdepth 3 -name vtk-config.cmake -print -quit)"
+          [ -n "$CFG" ] || { echo "ERREUR: bundle sans vtk-config.cmake"; exit 1; }
+          echo "VTK_ROOT=$ROOT" >> "$GITHUB_ENV"
+          
       - name: Set compiler env (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          echo "CC=gcc" >> $env:GITHUB_ENV
-          echo "CXX=g++" >> $env:GITHUB_ENV
-          # DLL search path for dyn.load() within R CMD check / tests
-          echo "${{ matrix.config.vespa-root }}/bin" >> $env:GITHUB_PATH
+          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> $env:GITHUB_ENV
+          echo "CC=C:/rtools45/x86_64-w64-mingw32.static.posix/bin/gcc.exe" >> $env:GITHUB_ENV
+          echo "CXX=C:/rtools45/x86_64-w64-mingw32.static.posix/bin/g++.exe" >> $env:GITHUB_ENV
           echo "C:/rtools45/ucrt64/bin" >> $env:GITHUB_PATH
           
       - name: Set library path (Linux)
@@ -117,7 +131,7 @@ jobs:
           fi
           cmake -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
-            -DVESPA_GIT_TAG="$VESPA_TAG"
+            -DVESPA_GIT_TAG="$VESPA_TAG" -DVTK_ROOT="$VTK_ROOT"
           cmake --build "$T/vespa-build" --parallel
 
       - name: Save Vespa cache
@@ -133,7 +147,6 @@ jobs:
         with:
           extra-packages: |
             any::rcmdcheck
-            astamm/rvtk
           needs: check
           
       - uses: r-lib/actions/check-r-package@v2

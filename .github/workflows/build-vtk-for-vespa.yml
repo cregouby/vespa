@@ -233,24 +233,19 @@ jobs:
           echo ">> $# static archives ; for examples :"
           for a in "$1" "$2" "$3"; do [ -e "$a" ] && echo "   $a"; done
 
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            zip -r "${PKG}.zip" "${PKG}"
-          else
-            tar -czf "${PKG}.tar.gz" "${PKG}"
-          fi
-          
+          tar -czf "${PKG}.tar.gz" "${PKG}"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: vtk-${{ matrix.platform }}
           path: |
             vtk-*-vespa-*.tar.gz
-            vtk-*-vespa-*.zip
           retention-days: 7
   
   release:
     name: Create Release
-    needs: [build-vtk, read-version]
+    needs: build-vtk
     runs-on: ubuntu-latest
     permissions:
       contents: write
