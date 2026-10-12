@@ -83,7 +83,7 @@ jobs:
             macOS)   P=darwin-arm64;   ROOT=/opt/vtk-9.4;   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
             Windows) P=windows-x86_64; ROOT="D:/a/vtk-9.4"; mkdir -p "$ROOT" ;;
           esac
-          VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
+          echo "VTK_VERSION=$(tr -d '[:space:]' < .github/vvtk-version.txt)" >> "$GITHUB_ENV"
           curl -fsSL "https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${P}.tar.gz" -o vtk.tar.gz
           tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
           rm vtk.tar.gz
