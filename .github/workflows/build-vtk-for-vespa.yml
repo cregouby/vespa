@@ -245,7 +245,7 @@ jobs:
   
   release:
     name: Create Release
-    needs: build-vtk
+    needs: [read-version, build-vtk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -268,11 +268,11 @@ jobs:
             elif [ -s "artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.zip" ]; then
               echo ">> OK  ${p} (zip)"
             else
-              echo ">> MANQUANT ou vide : ${p}"
+              echo ">> MISSING or empty : ${p}"
               MISSING="${MISSING} ${p}"
             fi
           done
-          [ -z "${MISSING}" ] || { echo "ERREUR: release incomplète :${MISSING}"; exit 1; }
+          [ -z "${MISSING}" ] || { echo "ERROR: incomplete release :${MISSING}"; exit 1; }
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
