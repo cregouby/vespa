@@ -10,28 +10,6 @@ name: R CMD check
 permissions: read-all
 
 jobs:
-  read-version:
-    name: Read VTK version
-    runs-on: ubuntu-latest
-    outputs:
-      vtk_version: ${{ steps.version.outputs.vtk_version }}
-      vtk_minor: ${{ steps.version.outputs.vtk_minor }}
-    
-    steps:
-      - uses: actions/checkout@v7
-      
-      - name: Read version from file
-        id: version
-        shell: bash
-        run: |
-          VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
-          VTK_MINOR="${VTK_VERSION%.*}"
-          
-          echo "vtk_version=${VTK_VERSION}" >> $GITHUB_OUTPUT
-          echo "vtk_minor=${VTK_MINOR}" >> $GITHUB_OUTPUT
-          echo "VTK version: ${VTK_VERSION}"
-          echo "VTK minor: ${VTK_MINOR}"
-
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
     continue-on-error: ${{ matrix.config.experimental == true }}
@@ -96,17 +74,16 @@ jobs:
         run: echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
 
       - name: Fetch prebuilt VTK
-        if: steps.cache-vtk.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
-          VTK_MINOR="${VTK_VERSION%.*}"
           set -e
           case "$RUNNER_OS" in
             Linux)   P=linux-x86_64;   ROOT=/opt/vtk-"$VTK_MINOR";   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
             macOS)   P=darwin-arm64;   ROOT=/opt/vtk-"$VTK_MINOR";   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
             Windows) P=windows-x86_64; ROOT="D:/a/vtk-"$VTK_MINOR"; mkdir -p "$ROOT" ;;
           esac
+          VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
+          VTK_MINOR="${VTK_VERSION%.*}"
           curl -fsSL "https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${P}.tar.gz" -o vtk.tar.gz
           tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
           rm vtk.tar.gz
