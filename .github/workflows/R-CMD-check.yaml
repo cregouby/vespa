@@ -80,7 +80,7 @@ jobs:
           case "$RUNNER_OS" in
             Linux)   P=linux-x86_64;   ROOT=/opt/vtk-"$VTK_MINOR";   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
             macOS)   P=darwin-arm64;   ROOT=/opt/vtk-"$VTK_MINOR";   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
-            Windows) P=windows-x86_64; ROOT="D:/a/vtk-"$VTK_MINOR"; mkdir -p "$ROOT" ;;
+            Windows) P=windows-x86_64; ROOT=D:/a/vtk-"$VTK_MINOR"; mkdir -p "$ROOT" ;;
           esac
           VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
           VTK_MINOR="${VTK_VERSION%.*}"
