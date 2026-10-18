@@ -6,7 +6,7 @@ on:
       vtk_version:
         description: 'VTK version to build'
         required: true
-        default: '9.4.1'
+        default: '9.5.2'
         type: string
   push:
     paths:
