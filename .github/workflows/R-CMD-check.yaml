@@ -77,13 +77,13 @@ jobs:
         shell: bash
         run: |
           set -e
+          VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
+          VTK_MINOR="${VTK_VERSION%.*}"
           case "$RUNNER_OS" in
             Linux)   P=linux-x86_64;   ROOT=/opt/vtk-"$VTK_MINOR";   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
             macOS)   P=darwin-arm64;   ROOT=/opt/vtk-"$VTK_MINOR";   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
             Windows) P=windows-x86_64; ROOT=D:/a/vtk-"$VTK_MINOR"; mkdir -p "$ROOT" ;;
           esac
-          VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
-          VTK_MINOR="${VTK_VERSION%.*}"
           curl -fsSL "https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${P}.tar.gz" -o vtk.tar.gz
           tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
           rm vtk.tar.gz
