@@ -11,7 +11,9 @@ on:
   push:
     paths:
       - '.github/vtk-version.txt'
+      # les deux orthographes pendant la transition (fichier renommé ou non)
       - '.github/workflows/build-vtk-for-vespa.yml'
+      - '.github/workflows/build_vtk_for_vespa.yml'
 
 jobs:
   read-version:
@@ -20,17 +22,17 @@ jobs:
     outputs:
       vtk_version: ${{ steps.version.outputs.vtk_version }}
       vtk_minor: ${{ steps.version.outputs.vtk_minor }}
-    
+
     steps:
       - uses: actions/checkout@v7
-      
+
       - name: Read version from file
         id: version
         shell: bash
         run: |
           VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
           VTK_MINOR="${VTK_VERSION%.*}"
-          
+
           echo "vtk_version=${VTK_VERSION}" >> $GITHUB_OUTPUT
           echo "vtk_minor=${VTK_MINOR}" >> $GITHUB_OUTPUT
           echo "VTK version: ${VTK_VERSION}"
@@ -55,10 +57,10 @@ jobs:
             cmake_arch: x86_64
           - os: windows-latest
             platform: windows-x86_64
-    
+
     steps:
       - uses: actions/checkout@v7
-      
+
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -66,18 +68,18 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             cmake ninja-build build-essential \
             libgl1-mesa-dev libxt-dev libxrender-dev libxext-dev
-      
+
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install cmake ninja
-      
+
       - name: Set up R and Rtools45 (Windows)
         if: runner.os == 'Windows'
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'release'
           rtools-version: '45'
-      
+
       - name: Install build tools (Windows)
         if: runner.os == 'Windows'
         shell: bash
@@ -86,7 +88,7 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake \
             mingw-w64-ucrt-x86_64-ninja
           echo "export PATH=/x86_64-w64-mingw32.static.posix/bin:/ucrt64/bin:\$PATH" >> ~/.bash_profile
-      
+
       - name: Download VTK source
         shell: bash
         run: |
@@ -96,7 +98,7 @@ jobs:
           echo "Downloading $URL"
           curl -fsSL "$URL" -o vtk-src.tar.gz
           tar -xzf vtk-src.tar.gz
-      
+
       - name: Configure VTK (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
@@ -104,19 +106,22 @@ jobs:
           VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
           mkdir -p build install
           cd build
-          
+
           CMAKE_ARCH_FLAG=""
           if [ "${{ matrix.platform }}" = "darwin-x86_64" ]; then
             CMAKE_ARCH_FLAG="-DCMAKE_OSX_ARCHITECTURES=x86_64"
           elif [ "${{ matrix.platform }}" = "darwin-arm64" ]; then
             CMAKE_ARCH_FLAG="-DCMAKE_OSX_ARCHITECTURES=arm64"
           fi
-          
+
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$PWD/../install" \
             -DBUILD_SHARED_LIBS=OFF \
             -DVTK_BUILD_ALL_MODULES=OFF \
+            -DVTK_BUILD_TESTING=OFF \
+            -DVTK_BUILD_EXAMPLES=OFF \
+            -DVTK_WRAP_PYTHON=OFF \
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
             -DVTK_MODULE_ENABLE_VTK_IOXML=YES \
             -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
@@ -140,7 +145,7 @@ jobs:
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             $CMAKE_ARCH_FLAG \
             ../VTK-${VTK_VERSION}
-      
+
       - name: Configure VTK (Windows)
         if: runner.os == 'Windows'
         shell: C:\rtools45\usr\bin\bash.exe --login -eo pipefail {0}
@@ -152,28 +157,27 @@ jobs:
           export CXX="${TCHAIN}/g++"
           export AR="${TCHAIN}/ar"
           export RANLIB="${TCHAIN}/ranlib"
-          
+
           # Use GITHUB_WORKSPACE which always points to the workflow working directory
           WORK_DIR="${GITHUB_WORKSPACE}"
           SRC_DIR="${WORK_DIR}/VTK-${VTK_VERSION}"
           BUILD_DIR="${WORK_DIR}/build"
           INSTALL_DIR="${WORK_DIR}/install"
-          
+
           mkdir -p "$BUILD_DIR" "$INSTALL_DIR"
           cd "$BUILD_DIR"
-          
+
           # Convert install path to Windows format for CMake
           INSTALL_PREFIX_WIN="$(cygpath -w "$INSTALL_DIR")"
-          
+
           echo "Source directory: $SRC_DIR"
           echo "Build directory: $BUILD_DIR"
           echo "Install directory: $INSTALL_PREFIX_WIN"
-          
+
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX_WIN}" \
             -DBUILD_SHARED_LIBS=OFF \
-            -DVTK_BUILD_ALL_MODULES=OFF \
             -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
             -DCMAKE_C_FLAGS="-D__USE_MINGW_ANSI_STDIO=1 -D_GNU_SOURCE -Wno-error=incompatible-pointer-types -fcommon" \
             -DCMAKE_CXX_FLAGS="-D__USE_MINGW_ANSI_STDIO=1 -D_GNU_SOURCE" \
@@ -184,20 +188,23 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_CommonCore=YES \
             -DVTK_MODULE_ENABLE_VTK_CommonDataModel=YES \
             -DVTK_MODULE_ENABLE_VTK_CommonExecutionModel=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonMath=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonMisc=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonSystem=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonTransforms=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersCore=YES \
-            -DVTK_MODULE_ENABLE_VTK_FiltersExtraction=YES \
-            -DVTK_MODULE_ENABLE_VTK_FiltersGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersGeneral=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersModeling=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersExtraction=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersPoints=YES \
-            -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersHybrid=YES \
-            -DVTK_MODULE_ENABLE_VTK_RenderingCore=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersSources=YES \
+            -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_IOXML=YES \
             -DVTK_MODULE_ENABLE_VTK_IOCore=YES \
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
             -DVTK_MODULE_ENABLE_VTK_ImagingCore=YES \
-            -DVTK_MODULE_ENABLE_VTK_ImagingStencil=YES \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             "$SRC_DIR"
 
@@ -211,7 +218,12 @@ jobs:
             cmake --build . --parallel
           fi
           cmake --install .
-      
+
+      # FIX 2026-10-19 : le package doit contenir l'arbre `cmake --install`
+      # COMPLET. bin/ est OBLIGATOIRE : VTK-targets.cmake exporte les outils
+      # de wrapping (VTK::WrapHierarchy -> bin/vtkWrapHierarchy-9.5) et
+      # find_package(VTK) échoue dès que les fichiers référencés manquent
+      # ("but this file does not exist").
       - name: Package VTK
         shell: bash
         run: |
@@ -220,13 +232,16 @@ jobs:
           PKG="vtk-${VTK_VERSION}-vespa-${{ matrix.platform }}"
           mkdir -p "${PKG}"
 
-          # include/vtk-X.Y + lib/*.a + lib/cmake/vtk-X.Y/  (required by find_package)
           cp -R install/include "${PKG}/include"
           cp -R install/lib     "${PKG}/lib"
           [ -d install/share ] && cp -R install/share "${PKG}/share" || true
+          test -d install/bin || { echo "ERREUR: install/bin absent du prefix installé"; exit 1; }
+          cp -R install/bin     "${PKG}/bin"
 
           test -f "${PKG}/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" || {
-            echo "ERREUR: vtk-config.cmake absent de l'arborescence packagée"; exit 1; }
+            echo "ERREUR: vtk-config.cmake missing from tarball"; exit 1; }
+          ls "${PKG}"/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
+            echo "ERREUR: vtkWrapHierarchy missing from bin/ (find_package(VTK) will fail)"; exit 1; }
 
           # Stats without pipe (resilient to SIGPIPE / pipefail)
           set -- "${PKG}"/lib/*.a
@@ -242,7 +257,7 @@ jobs:
           path: |
             vtk-*-vespa-*.tar.gz
           retention-days: 7
-  
+
   release:
     name: Create Release
     needs: [read-version, build-vtk]
@@ -257,18 +272,27 @@ jobs:
         with:
           path: artifacts
 
+      # Vérification ATOMIQUE : présence ET contenu de chaque tarball
+      # (vtk-config.cmake + outils de wrapping), sans pipe (pas de SIGPIPE).
       - name: Verify release completeness (atomic publish)
         shell: bash
         run: |
           VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
+          VTK_MINOR="${VTK_VERSION%.*}"
           MISSING=""
           for p in linux-x86_64 linux-aarch64 darwin-arm64 darwin-x86_64 windows-x86_64; do
-            if   [ -s "artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.tar.gz" ]; then
-              echo ">> OK  ${p} (tar.gz)"
-            elif [ -s "artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.zip" ]; then
-              echo ">> OK  ${p} (zip)"
-            else
+            A="artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.tar.gz"
+            if [ ! -s "$A" ]; then
               echo ">> MISSING or empty : ${p}"
+              MISSING="${MISSING} ${p}"
+              continue
+            fi
+            tar -tzf "$A" > "list-${p}.txt"
+            if grep -q "lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" "list-${p}.txt" \
+               && grep -q "bin/vtkWrapHierarchy-" "list-${p}.txt"; then
+              echo ">> OK  ${p} (vtk-config.cmake + vtkWrapHierarchy)"
+            else
+              echo ">> INCOMPLET : ${p} (vtk-config.cmake ou bin/vtkWrapHierarchy manquant)"
               MISSING="${MISSING} ${p}"
             fi
           done
@@ -281,7 +305,6 @@ jobs:
           name: VTK ${{ needs.read-version.outputs.vtk_version }} for Vespa
           files: |
             artifacts/**/*.tar.gz
-            artifacts/**/*.zip
           draft: false
           prerelease: false
           generate_release_notes: true
