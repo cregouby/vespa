@@ -189,6 +189,16 @@ jobs:
           echo "Build directory: $BUILD_DIR"
           echo "Install directory: $INSTALL_PREFIX_WIN"
 
+          # FIX 2026-10-20: do NOT disable the Rendering group here.
+          # VTK::IOGeometry (glTF importer) hard-requires VTK::RenderingCore,
+          # so VTK_GROUP_ENABLE_Rendering=NO broke vtk_module_scan with:
+          #   "The VTK::IOGeometry module ... requires the disabled module
+          #    VTK::RenderingCore".
+          # The Unix configure never disabled that group (RenderingCore is
+          # auto-enabled there as an IOGeometry dependency), so removing it
+          # here also makes the Windows module set truly identical to the
+          # Unix ones. Qt/MPI/Web stay explicitly off: nothing enabled
+          # requires them.
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX_WIN}" \
@@ -198,7 +208,7 @@ jobs:
             -DCMAKE_CXX_FLAGS="-D__USE_MINGW_ANSI_STDIO=1 -D_GNU_SOURCE" \
             -DVTK_BUILD_ALL_MODULES=OFF -DVTK_BUILD_TESTING=OFF \
             -DVTK_BUILD_EXAMPLES=OFF -DVTK_WRAP_PYTHON=OFF \
-            -DVTK_GROUP_ENABLE_Rendering=NO -DVTK_GROUP_ENABLE_Qt=NO \
+            -DVTK_GROUP_ENABLE_Qt=NO \
             -DVTK_GROUP_ENABLE_MPI=NO   -DVTK_GROUP_ENABLE_Web=NO \
             -DVTK_MODULE_ENABLE_VTK_CommonCore=YES \
             -DVTK_MODULE_ENABLE_VTK_CommonDataModel=YES \
