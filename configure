@@ -1,11 +1,12 @@
 #!/bin/sh
 # configure -- Unix/macOS configuration for the vespa R package.
 # Revision: tarball-static-v4
-#  - FIX: suppression des 2 lignes qui ecrasaient VTK_CPPFLAGS/VTK_LIBS
-#    avec des chemins inst/vtk inexistants en CI.
-#  - FIX: Strategy 2 (download) positionne desormais VTK_INCDIR/VTK_LIBDIR.
-#  - FIX: auto_build_vespa passe VTK_ROOT au superbuild et reste statique
-#    (le superbuild exige VTK_ROOT : -DBUILD_SHARED_LIBS=ON seul = FATAL).
+#  - FIX: removed the two lines that overwrote VTK_CPPFLAGS/VTK_LIBS with
+#    inst/vtk paths that do not exist in CI.
+#  - FIX: Strategy 2 (download) now sets VTK_INCDIR/VTK_LIBDIR.
+#  - FIX: auto_build_vespa passes VTK_ROOT to the superbuild and stays
+#    static (the superbuild requires VTK_ROOT; -DBUILD_SHARED_LIBS=ON
+#    alone would hit a CMake FATAL_ERROR).
 
 print_install_instructions() {
   echo ""
@@ -64,13 +65,13 @@ if [ -z "$CGAL_INC" ]; then
 fi
 echo ">> Checking for CGAL... OK (found in $CGAL_INC)"
 
-# --- Check for VTK (download only, no system VTK) ---
+# --- Check for VTK (prebuilt tarball only, no system VTK) ---
 VTK_FOUND=false
 VTK_SOURCE=""
 VTK_INCDIR=""
 VTK_LIBDIR=""
 
-# Strategy 0: prebuilt prefix via VTK_ROOT (CI ou install manuelle)
+# Strategy 0: prebuilt prefix via VTK_ROOT (CI or manual install)
 if [ -n "$VTK_ROOT" ] && [ -d "$VTK_ROOT/include" ]; then
   for d in "$VTK_ROOT"/include/vtk-*; do
     if [ -f "$d/vtkObject.h" ]; then
@@ -137,7 +138,7 @@ if [ "$VTK_FOUND" = "false" ]; then
         VTK_SOURCE="downloaded"
         echo ">> VTK downloaded and extracted to inst/vtk"
       else
-        echo ">> ERROR: tarball VTK incomplet (vtkObject.h ou libvtk*.a manquant)"
+        echo ">> ERROR: incomplete VTK tarball (missing vtkObject.h or libvtk*.a)"
       fi
     else
       echo ">> ERROR: Failed to download VTK from $VTK_URL"
@@ -235,8 +236,8 @@ if [ -z "$VESPA_LIBDIR" ]; then
   fi
 fi
 
-# Priority 3: auto-build (statique, contre la VTK tarball telechargee
-# ou le prefix VTK_ROOT ; le superbuild exige VTK_ROOT).
+# Priority 3: auto-build (static, against the downloaded VTK tarball or the
+# VTK_ROOT prefix; the superbuild requires VTK_ROOT).
 auto_build_vespa() {
   AUTOBUILD_VTK_ROOT="$1"
   PKG_SRC="$(pwd)"
@@ -297,7 +298,7 @@ if [ -z "$VESPA_LIBDIR" ]; then
       fi
     fi
   else
-    echo ">> Vespa absent et aucune VTK statique exploitable pour l'autobuild."
+    echo ">> Vespa not found and no usable static VTK for the auto-build."
   fi
 fi
 
@@ -307,7 +308,7 @@ if [ -z "$VESPA_LIBDIR" ]; then
   exit 1
 fi
 
-# --- Collect Vespa libraries (statique ou partagée) ---
+# --- Collect Vespa libraries (static or shared) ---
 VESPA_STATIC=false
 VESPA_LIBS=""
 for f in "$VESPA_LIBDIR"/libvtkCGAL*.a; do
@@ -329,7 +330,7 @@ else
   done
 fi
 
-# --- RPATH (inutile si tout est statique) ---
+# --- RPATH (not needed when everything is static) ---
 RPATH_FLAG=""
 if [ "$VESPA_STATIC" = "false" ]; then
   if [ "$VESPA_SOURCE" = "system" ]; then
@@ -345,30 +346,30 @@ if [ "$VTK_SOURCE" = "system" ]; then
   VTK_CPPFLAGS=$(pkg-config --cflags "$VTK_PKG")
   VTK_LIBS=$(pkg-config --libs "$VTK_PKG")
 else
-  # VTK_SOURCE = prebuilt (VTK_ROOT) ou downloaded (inst/vtk) :
-  # VTK_INCDIR / VTK_LIBDIR ont ete positionnes par la strategie correspondante.
-  # -isystem : évite le spam -Wpedantic des headers VTK (warnings --as-cran)
+  # VTK_SOURCE = prebuilt (VTK_ROOT) or downloaded (inst/vtk):
+  # VTK_INCDIR / VTK_LIBDIR were set by the matching strategy above.
+  # -isystem: avoids the -Wpedantic spam from VTK headers (--as-cran warnings)
   VTK_CPPFLAGS="-isystem ${VTK_INCDIR}"
   for _a in "${VTK_LIBDIR}"/libvtk*.a; do
     [ -e "$_a" ] || continue
     VTK_ARCHIVES="$VTK_ARCHIVES $_a"
   done
   if [ -z "$VTK_ARCHIVES" ]; then
-    echo ">> ERROR: aucune libvtk*.a dans ${VTK_LIBDIR} (bundle VTK incomplet ?)"
+    echo ">> ERROR: no libvtk*.a found in ${VTK_LIBDIR} (incomplete VTK bundle?)"
     exit 1
   fi
   case "$(uname -s)" in
     Linux*)
-      # GNU ld = une seule passe sur les archives : le groupe est OBLIGATOIRE,
-      # sinon ordre alphabétique != ordre de dépendance -> undefined references
+      # GNU ld scans archives in a single pass: the group is MANDATORY,
+      # otherwise alphabetical order != dependency order -> undefined references
       GROUP_OPEN="-Wl,--start-group"; GROUP_CLOSE="-Wl,--end-group"
       VTK_SYSLIBS="-lpthread -ldl -lm -lz"
       ;;
-    Darwin*) VTK_SYSLIBS="-lz" ;;  # ld64 re-scanne les archives jusqu'au point fixe
+    Darwin*) VTK_SYSLIBS="-lz" ;;  # ld64 re-scans archives until a fixed point
   esac
 fi
 
-# --- glog si présent (ceres peut en tirer des symboles) ---
+# --- glog, if present (ceres may pull symbols from it) ---
 GLOG_LIBS=""
 for l in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /usr/lib /usr/local/lib /opt/homebrew/lib; do
   if ls $l/libglog.* >/dev/null 2>&1; then GLOG_LIBS="-lglog"; break; fi

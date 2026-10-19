@@ -73,12 +73,16 @@ jobs:
         shell: bash
         run: echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
 
-      # FIX 2026-10-19 :
-      #  1. VTK_VERSION/VTK_MINOR lus AVANT le case (avant : ROOT=/opt/vtk- vide).
-      #  2. find -maxdepth 3 remplace par un test du chemin canonique :
-      #     vtk-config.cmake est a la profondeur 4 (lib/cmake/vtk-9.4/fichier),
-      #     -maxdepth 3 ne le voyait JAMAIS -> "bundle sans vtk-config.cmake"
-      #     sur les 3 OS meme avec un tarball parfait.
+      # FIX 2026-10-19:
+      #  1. VTK_VERSION/VTK_MINOR are read BEFORE the case statement
+      #     (before: ROOT=/opt/vtk- with an empty suffix).
+      #  2. find -maxdepth 3 replaced by a direct test of the canonical path:
+      #     vtk-config.cmake sits at depth 4 (lib/cmake/vtk-9.4/<file>),
+      #     so -maxdepth 3 never matched it -> "bundle without
+      #     vtk-config.cmake" on all 3 OSes even with a perfect tarball.
+      #  3. WrapHierarchy guard: VTK-targets.cmake exports the wrapping
+      #     executables; find_package(VTK) fails if any referenced file is
+      #     missing -> fail fast here with a readable message instead.
       - name: Fetch prebuilt VTK
         shell: bash
         run: |
@@ -94,7 +98,9 @@ jobs:
           tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
           rm vtk.tar.gz
           [ -f "$ROOT/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" ] || {
-            echo "ERREUR: vtk-config.cmake absent du bundle extrait dans $ROOT"; exit 1; }
+            echo "ERROR: vtk-config.cmake missing from the bundle extracted in $ROOT"; exit 1; }
+          ls "$ROOT"/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
+            echo "ERROR: bin/vtkWrapHierarchy-* missing in $ROOT (stale release or package without bin/)"; exit 1; }
           echo "VTK_ROOT=$ROOT" >> "$GITHUB_ENV"
 
       - name: Set compiler env (Windows)
@@ -117,9 +123,9 @@ jobs:
 
       # ── Vespa pre-build into vespa-root (Priority 2 in configure) ────────────
 
-      # FIX : la cle inclut aussi vtk-version.txt et la recette superbuild,
-      # sinon un bundle vespa construit contre une autre VTK reste "valide"
-      # apres changement de VTK -> dual-VTK de retour.
+      # The key also covers vtk-version.txt and the superbuild recipe:
+      # otherwise a vespa bundle built against another VTK stays "valid"
+      # after a VTK change -> dual-VTK comes back through the cache.
       - name: Restore Vespa bundle cache
         id: cache-vespa-bundle
         uses: actions/cache/restore@v6

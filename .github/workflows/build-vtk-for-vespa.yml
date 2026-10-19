@@ -11,7 +11,7 @@ on:
   push:
     paths:
       - '.github/vtk-version.txt'
-      # les deux orthographes pendant la transition (fichier renommé ou non)
+      # both spellings during the transition (renamed file or not)
       - '.github/workflows/build-vtk-for-vespa.yml'
       - '.github/workflows/build_vtk_for_vespa.yml'
 
@@ -25,6 +25,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+
+      # Guard: a legacy copy of this workflow (underscore spelling) still
+      # carries the OLD packaging rules and publishes tarballs WITHOUT bin/.
+      # Two workflows sharing the same display name also makes a manual
+      # dispatch easy to aim at the wrong file.
+      - name: Guard against legacy workflow duplicate
+        shell: bash
+        run: |
+          if [ -f .github/workflows/build_vtk_for_vespa.yml ]; then
+            echo "ERROR: legacy workflow .github/workflows/build_vtk_for_vespa.yml still exists in the repo."
+            echo "It packages tarballs WITHOUT bin/ (old packaging rules)."
+            echo "Delete it and keep only build-vtk-for-vespa.yml, then re-run."
+            exit 1
+          fi
+          echo "OK: no legacy workflow duplicate found"
 
       - name: Read version from file
         id: version
@@ -219,11 +234,25 @@ jobs:
           fi
           cmake --install .
 
-      # FIX 2026-10-19 : le package doit contenir l'arbre `cmake --install`
-      # COMPLET. bin/ est OBLIGATOIRE : VTK-targets.cmake exporte les outils
-      # de wrapping (VTK::WrapHierarchy -> bin/vtkWrapHierarchy-9.5) et
-      # find_package(VTK) échoue dès que les fichiers référencés manquent
-      # ("but this file does not exist").
+      # Verify the installed tree BEFORE packaging. bin/ is MANDATORY:
+      # VTK-targets.cmake exports the wrapping tools (VTK::WrapHierarchy ->
+      # bin/vtkWrapHierarchy-9.5) and find_package(VTK) fails as soon as a
+      # referenced file is missing ("but this file does not exist").
+      # If this step fails, the packaging rules changed or VTK changed its
+      # install layout: fail here, never publish a broken bundle.
+      - name: Verify installed tree (bin/ is mandatory)
+        shell: bash
+        run: |
+          echo ">> install/ top level:"
+          ls install
+          test -d install/bin || {
+            echo "ERROR: install/bin does not exist after cmake --install"; exit 1; }
+          echo ">> install/bin contents:"
+          ls install/bin
+          ls install/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
+            echo "ERROR: vtkWrapHierarchy not installed -> VTK-targets.cmake would reference a missing file"; exit 1; }
+          echo "OK: install/bin/vtkWrapHierarchy present"
+
       - name: Package VTK
         shell: bash
         run: |
@@ -235,13 +264,13 @@ jobs:
           cp -R install/include "${PKG}/include"
           cp -R install/lib     "${PKG}/lib"
           [ -d install/share ] && cp -R install/share "${PKG}/share" || true
-          test -d install/bin || { echo "ERREUR: install/bin absent du prefix installé"; exit 1; }
+          test -d install/bin || { echo "ERROR: install/bin missing from the installed prefix"; exit 1; }
           cp -R install/bin     "${PKG}/bin"
 
           test -f "${PKG}/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" || {
-            echo "ERREUR: vtk-config.cmake missing from tarball"; exit 1; }
+            echo "ERROR: vtk-config.cmake missing from the packaged tree"; exit 1; }
           ls "${PKG}"/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
-            echo "ERREUR: vtkWrapHierarchy missing from bin/ (find_package(VTK) will fail)"; exit 1; }
+            echo "ERROR: vtkWrapHierarchy missing from bin/ (find_package(VTK) will fail on the consumer side)"; exit 1; }
 
           # Stats without pipe (resilient to SIGPIPE / pipefail)
           set -- "${PKG}"/lib/*.a
@@ -249,6 +278,20 @@ jobs:
           for a in "$1" "$2" "$3"; do [ -e "$a" ] && echo "   $a"; done
 
           tar -czf "${PKG}.tar.gz" "${PKG}"
+
+          # Proof of content: verify the FINAL tarball (both mandatory
+          # markers). This is the ground truth shipped to the release.
+          tar -tzf "${PKG}.tar.gz" > "manifest-${PKG}.txt"
+          grep -q "lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" "manifest-${PKG}.txt" || {
+            echo "ERROR: ${PKG}.tar.gz does not contain vtk-config.cmake"; exit 1; }
+          grep -q "bin/vtkWrapHierarchy-" "manifest-${PKG}.txt" || {
+            echo "ERROR: ${PKG}.tar.gz does not contain bin/vtkWrapHierarchy (consumer find_package(VTK) would fail)"; exit 1; }
+          echo ">> VERIFIED ${PKG}.tar.gz: vtk-config.cmake + bin/vtkWrapHierarchy present"
+
+          # Drop the staging dir + manifest so the uploaded artifact is
+          # exactly the verified tarball (no duplicate tree, predictable
+          # download path for the release job).
+          rm -rf "${PKG}" "manifest-${PKG}.txt"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -272,8 +315,8 @@ jobs:
         with:
           path: artifacts
 
-      # Vérification ATOMIQUE : présence ET contenu de chaque tarball
-      # (vtk-config.cmake + outils de wrapping), sans pipe (pas de SIGPIPE).
+      # Atomic verification: presence AND content of every tarball
+      # (vtk-config.cmake + wrapping tools), no pipes (no SIGPIPE).
       - name: Verify release completeness (atomic publish)
         shell: bash
         run: |
@@ -292,11 +335,30 @@ jobs:
                && grep -q "bin/vtkWrapHierarchy-" "list-${p}.txt"; then
               echo ">> OK  ${p} (vtk-config.cmake + vtkWrapHierarchy)"
             else
-              echo ">> INCOMPLET : ${p} (vtk-config.cmake ou bin/vtkWrapHierarchy manquant)"
+              echo ">> INCOMPLETE : ${p} (vtk-config.cmake or bin/vtkWrapHierarchy missing)"
               MISSING="${MISSING} ${p}"
             fi
           done
           [ -z "${MISSING}" ] || { echo "ERROR: incomplete release :${MISSING}"; exit 1; }
+
+      # Republish guarantee: an existing release (same tag) keeps its OLD
+      # assets until it is deleted - re-uploading can silently keep stale
+      # tarballs (the "bin/ MISSING" case). Delete release + tag first so
+      # the publish step below can only upload the tarballs verified above.
+      - name: Purge stale release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="vtk-for-vespa-${{ needs.read-version.outputs.vtk_version }}"
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo ">> Stale release ${TAG} found -> deleting release + tag"
+            gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          fi
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "ERROR: stale release ${TAG} still exists after purge"; exit 1
+          fi
+          echo ">> Clean slate for ${TAG}"
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
@@ -305,6 +367,7 @@ jobs:
           name: VTK ${{ needs.read-version.outputs.vtk_version }} for Vespa
           files: |
             artifacts/**/*.tar.gz
+          fail_on_unmatched_files: true
           draft: false
           prerelease: false
           generate_release_notes: true

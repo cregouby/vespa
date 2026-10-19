@@ -1,50 +1,50 @@
 #!/bin/sh
 # configure.win -- revision tarball-static-v4
-# Changelog vs v3 :
-#  - glog ajoute a la cloture de link (ceres ucrt64 depend de glog,
-#    sinon undefined reference to google::LogMessage::* au link de vespa.so).
-#  - (a faire cote repo) supprimer le vieux bundle partage inst/vespa :
-#    le glob libvtkCGAL*.a matche aussi les import libs *.dll.a -> lien
-#    contre le DLL -> DLL manquante au runtime.
+# Changelog vs v3:
+#  - glog added to the link closure (ucrt64 ceres depends on glog, otherwise
+#    undefined reference to google::LogMessage::* when linking vespa.so).
+#  - (repo-side task) delete the legacy shared inst/vespa bundle: the
+#    libvtkCGAL*.a glob also matches *.dll.a import libraries, which links
+#    against the DLL -> missing DLL at runtime.
 set -e
 UCRT="C:/rtools45/ucrt64"
 
-# --- Vespa statique : bundle inst/vespa, sinon $VESPA_ROOT -------------------
+# --- Static Vespa: inst/vespa bundle first, then $VESPA_ROOT -----------------
 if [ -f "inst/vespa/include/vtkCGALAlgorithm.h" ]; then
   FOUND_ROOT="$(pwd)/inst/vespa"
 elif [ -n "${VESPA_ROOT}" ] && [ -f "${VESPA_ROOT}/include/vtkCGALAlgorithm.h" ]; then
   FOUND_ROOT="${VESPA_ROOT}"
 else
-  echo ">> ERROR: Vespa introuvable (inst/vespa ou \$VESPA_ROOT)" >&2; exit 1
+  echo ">> ERROR: Vespa not found (inst/vespa or \$VESPA_ROOT)" >&2; exit 1
 fi
 
 VESPA_LIBS=""
 for f in "${FOUND_ROOT}"/lib/libvtkCGAL*.a; do
   [ -e "$f" ] || continue
   case "$f" in
-    *.dll.a) echo ">> ERROR: $f est une import lib (bundle partage obsolete)." >&2
-             echo ">>         Rebuild vespa en BUILD_SHARED_LIBS=OFF." >&2; exit 1 ;;
+    *.dll.a) echo ">> ERROR: $f is an import library (obsolete shared bundle)." >&2
+             echo ">>         Rebuild vespa with BUILD_SHARED_LIBS=OFF." >&2; exit 1 ;;
   esac
   VESPA_LIBS="${VESPA_LIBS} $f"
 done
-[ -n "${VESPA_LIBS}" ] || { echo ">> ERROR: pas de libvtkCGAL*.a (rebuild vespa en BUILD_SHARED_LIBS=OFF)" >&2; exit 1; }
+[ -n "${VESPA_LIBS}" ] || { echo ">> ERROR: no libvtkCGAL*.a (rebuild vespa with BUILD_SHARED_LIBS=OFF)" >&2; exit 1; }
 
-# --- VTK : tarball préconstruit, branche statique uniquement -----------------
-[ -n "${VTK_ROOT}" ] || { echo ">> ERROR: VTK_ROOT vide" >&2; exit 1; }
+# --- VTK: prebuilt tarball, static branch only -------------------------------
+[ -n "${VTK_ROOT}" ] || { echo ">> ERROR: VTK_ROOT is empty" >&2; exit 1; }
 VTK_INCDIR="$(echo "${VTK_ROOT}"/include/vtk-*/vtkObject.h | sed 's|/vtkObject.h||')"
-[ -f "${VTK_INCDIR}/vtkObject.h" ] || { echo ">> ERROR: VTK invalide sous ${VTK_ROOT}" >&2; exit 1; }
+[ -f "${VTK_INCDIR}/vtkObject.h" ] || { echo ">> ERROR: invalid VTK under ${VTK_ROOT}" >&2; exit 1; }
 VTK_ARCHIVES=""
 for a in "${VTK_ROOT}"/lib/libvtk*.a; do
   [ -e "$a" ] || continue
   VTK_ARCHIVES="${VTK_ARCHIVES} $a"
 done
-[ -n "${VTK_ARCHIVES}" ] || { echo ">> ERROR: pas de libvtk*.a sous ${VTK_ROOT}/lib" >&2; exit 1; }
+[ -n "${VTK_ARCHIVES}" ] || { echo ">> ERROR: no libvtk*.a under ${VTK_ROOT}/lib" >&2; exit 1; }
 
-# --- headers tiers requis par vtkCGAL*.h : CGAL, Eigen, Boost ---------------
+# --- Third-party headers required by vtkCGAL*.h: CGAL, Eigen, Boost ----------
 EXTRA_CPPFLAGS="-I${UCRT}/include -I${UCRT}/include/eigen3"
 EXPORT_FLAGS="-DVTKCGALALGORITHM_EXPORT= -DVTKCGALPMP_EXPORT= -DVTKCGALPSP_EXPORT= -DVTKCGALSR_EXPORT= -DVTKCGALDELAUNAY_EXPORT="
 
-# --- clôture de link : ceres (+ suitesparse transitif), glog, gmp, mpfr ------
+# --- Link closure: ceres (+ transitive suitesparse), glog, gmp, mpfr ---------
 if command -v pkg-config >/dev/null 2>&1 && pkg-config --libs ceres >/dev/null 2>&1; then
   CERES_LIBS=$(pkg-config --libs ceres)
 else
@@ -53,7 +53,7 @@ fi
 GLOG_LIBS=""
 if [ -e "${UCRT}/lib/libglog.dll.a" ] || [ -e "${UCRT}/lib/libglog.a" ]; then
   GLOG_LIBS="-lglog"
-  echo ">> glog détecté (ceres ucrt64 en dépend)"
+  echo ">> glog detected (ucrt64 ceres depends on it)"
 fi
 SYSTEM_LIBS="-lopengl32 -lglu32 -lws2_32 -liphlpapi -lpsapi -ldbghelp -luser32 -lgdi32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -lkernel32"
 
