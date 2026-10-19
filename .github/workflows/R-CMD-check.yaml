@@ -68,38 +68,43 @@ jobs:
             mingw-w64-ucrt-x86_64-ninja
 
       # ── Set environment variables ─────────────────────────────────────────────
-      
+
       - name: Export VESPA_ROOT
         shell: bash
         run: echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
 
+      # FIX 2026-10-19 :
+      #  1. VTK_VERSION/VTK_MINOR lus AVANT le case (avant : ROOT=/opt/vtk- vide).
+      #  2. find -maxdepth 3 remplace par un test du chemin canonique :
+      #     vtk-config.cmake est a la profondeur 4 (lib/cmake/vtk-9.4/fichier),
+      #     -maxdepth 3 ne le voyait JAMAIS -> "bundle sans vtk-config.cmake"
+      #     sur les 3 OS meme avec un tarball parfait.
       - name: Fetch prebuilt VTK
         shell: bash
         run: |
           set -e
-          VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
+          VTK_VERSION="$(tr -d '[:space:]' < .github/vtk-version.txt)"
           VTK_MINOR="${VTK_VERSION%.*}"
           case "$RUNNER_OS" in
-            Linux)   P=linux-x86_64;   ROOT=/opt/vtk-"$VTK_MINOR";   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
-            macOS)   P=darwin-arm64;   ROOT=/opt/vtk-"$VTK_MINOR";   sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
-            Windows) P=windows-x86_64; ROOT=D:/a/vtk-"$VTK_MINOR"; mkdir -p "$ROOT" ;;
+            Linux)   P=linux-x86_64;   ROOT="/opt/vtk-${VTK_MINOR}"; sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
+            macOS)   P=darwin-arm64;   ROOT="/opt/vtk-${VTK_MINOR}"; sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
+            Windows) P=windows-x86_64; ROOT="D:/a/vtk-${VTK_MINOR}"; mkdir -p "$ROOT" ;;
           esac
           curl -fsSL "https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${P}.tar.gz" -o vtk.tar.gz
           tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
           rm vtk.tar.gz
-          CFG="$(find "$ROOT" -maxdepth 3 -name vtk-config.cmake -print -quit)"
-          [ -n "$CFG" ] || { echo "ERREUR: bundle sans vtk-config.cmake"; exit 1; }
+          [ -f "$ROOT/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" ] || {
+            echo "ERREUR: vtk-config.cmake absent du bundle extrait dans $ROOT"; exit 1; }
           echo "VTK_ROOT=$ROOT" >> "$GITHUB_ENV"
-          
+
       - name: Set compiler env (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> $env:GITHUB_ENV
           echo "CC=C:/rtools45/x86_64-w64-mingw32.static.posix/bin/gcc.exe" >> $env:GITHUB_ENV
           echo "CXX=C:/rtools45/x86_64-w64-mingw32.static.posix/bin/g++.exe" >> $env:GITHUB_ENV
           echo "C:/rtools45/ucrt64/bin" >> $env:GITHUB_PATH
-          
+
       - name: Set library path (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -110,14 +115,17 @@ jobs:
         run: |
           echo "DYLD_LIBRARY_PATH=${{ matrix.config.vespa-root }}/lib:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
 
-      # ── Vespa pre-build into inst/vespa (bundled, Priority 1 in configure) ──
-      
+      # ── Vespa pre-build into vespa-root (Priority 2 in configure) ────────────
+
+      # FIX : la cle inclut aussi vtk-version.txt et la recette superbuild,
+      # sinon un bundle vespa construit contre une autre VTK reste "valide"
+      # apres changement de VTK -> dual-VTK de retour.
       - name: Restore Vespa bundle cache
         id: cache-vespa-bundle
         uses: actions/cache/restore@v6
         with:
           path: ${{ matrix.config.vespa-root }}
-          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt') }}
+          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt', '.github/vtk-version.txt', 'tools/build-vespa/CMakeLists.txt') }}
 
       - name: Build and install Vespa
         if: steps.cache-vespa-bundle.outputs.cache-hit != 'true'
@@ -141,7 +149,7 @@ jobs:
         with:
           path: ${{ matrix.config.vespa-root }}
           key: ${{ steps.cache-vespa-bundle.outputs.cache-primary-key }}
-            
+
       # ── R check ─────────────────────────────────────────────────────────────
 
       - uses: r-lib/actions/setup-r-dependencies@v2
@@ -149,7 +157,7 @@ jobs:
           extra-packages: |
             any::rcmdcheck
           needs: check
-          
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true

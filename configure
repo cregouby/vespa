@@ -1,5 +1,11 @@
 #!/bin/sh
 # configure -- Unix/macOS configuration for the vespa R package.
+# Revision: tarball-static-v4
+#  - FIX: suppression des 2 lignes qui ecrasaient VTK_CPPFLAGS/VTK_LIBS
+#    avec des chemins inst/vtk inexistants en CI.
+#  - FIX: Strategy 2 (download) positionne desormais VTK_INCDIR/VTK_LIBDIR.
+#  - FIX: auto_build_vespa passe VTK_ROOT au superbuild et reste statique
+#    (le superbuild exige VTK_ROOT : -DBUILD_SHARED_LIBS=ON seul = FATAL).
 
 print_install_instructions() {
   echo ""
@@ -39,9 +45,6 @@ print_install_instructions() {
   echo ""
 }
 
-# Required VTK modules
-REQUIRED_VTK_MODULES="vtkIOGeometry vtkFiltersCore vtkFiltersGeneral vtkFiltersGeometry"
-
 # --- Check for CGAL ---
 CGAL_INC=""
 if [ -f /usr/include/CGAL/config.h ]; then
@@ -64,6 +67,8 @@ echo ">> Checking for CGAL... OK (found in $CGAL_INC)"
 # --- Check for VTK (download only, no system VTK) ---
 VTK_FOUND=false
 VTK_SOURCE=""
+VTK_INCDIR=""
+VTK_LIBDIR=""
 
 # Strategy 0: prebuilt prefix via VTK_ROOT (CI ou install manuelle)
 if [ -n "$VTK_ROOT" ] && [ -d "$VTK_ROOT/include" ]; then
@@ -96,7 +101,7 @@ fi
 if [ "$VTK_FOUND" = "false" ]; then
   VTK_VERSION="9.4.1"
   VTK_MINOR="${VTK_VERSION%.*}"
-  
+
   OS=$(uname -s)
   ARCH=$(uname -m)
   case "$OS" in
@@ -115,19 +120,25 @@ if [ "$VTK_FOUND" = "false" ]; then
       fi
       ;;
   esac
-  
+
   if [ -n "$PLATFORM" ]; then
     GITHUB_REPO="${GITHUB_REPOSITORY:-cregouby/vespa}"
     VTK_URL="https://github.com/${GITHUB_REPO}/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${PLATFORM}.tar.gz"
-    
+
     echo ">> Downloading VTK $VTK_VERSION from $VTK_URL"
     if curl -fsSL "$VTK_URL" -o vtk-vespa.tar.gz 2>/dev/null; then
       mkdir -p inst/vtk
       tar -xzf vtk-vespa.tar.gz -C inst/vtk --strip-components=1
       rm vtk-vespa.tar.gz
-      VTK_FOUND=true
-      VTK_SOURCE="downloaded"
-      echo ">> VTK downloaded and extracted to inst/vtk"
+      VTK_INCDIR="$(pwd)/inst/vtk/include/vtk-${VTK_MINOR}"
+      VTK_LIBDIR="$(pwd)/inst/vtk/lib"
+      if [ -f "$VTK_INCDIR/vtkObject.h" ] && ls "$VTK_LIBDIR"/libvtk*.a >/dev/null 2>&1; then
+        VTK_FOUND=true
+        VTK_SOURCE="downloaded"
+        echo ">> VTK downloaded and extracted to inst/vtk"
+      else
+        echo ">> ERROR: tarball VTK incomplet (vtkObject.h ou libvtk*.a manquant)"
+      fi
     else
       echo ">> ERROR: Failed to download VTK from $VTK_URL"
     fi
@@ -224,8 +235,10 @@ if [ -z "$VESPA_LIBDIR" ]; then
   fi
 fi
 
-# Priority 3: auto-build
+# Priority 3: auto-build (statique, contre la VTK tarball telechargee
+# ou le prefix VTK_ROOT ; le superbuild exige VTK_ROOT).
 auto_build_vespa() {
+  AUTOBUILD_VTK_ROOT="$1"
   PKG_SRC="$(pwd)"
   INST_DIR="${PKG_SRC}/inst/vespa"
   BUILD_DIR="$(mktemp -d)"
@@ -248,14 +261,16 @@ auto_build_vespa() {
     VESPA_GIT_TAG="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
   fi
 
-  echo ">> Building Vespa ${VESPA_GIT_TAG} (this may take several minutes) ..."
+  echo ">> Building Vespa ${VESPA_GIT_TAG} (static, against VTK in ${AUTOBUILD_VTK_ROOT}) ..."
+  echo ">> (this may take several minutes) ..."
 
   cmake -S "${PKG_SRC}/tools/build-vespa" \
         -B "$BUILD_DIR" \
         -DINSTALL_PREFIX="$INST_DIR" \
         -DVESPA_GIT_TAG="$VESPA_GIT_TAG" \
+        -DVTK_ROOT="$AUTOBUILD_VTK_ROOT" \
         -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=ON \
+        -DBUILD_SHARED_LIBS=OFF \
     && cmake --build "$BUILD_DIR"
 
   STATUS=$?
@@ -264,15 +279,25 @@ auto_build_vespa() {
 }
 
 if [ -z "$VESPA_LIBDIR" ]; then
-  if auto_build_vespa; then
-    VESPA_SOURCE="autobuilt"
-    VESPA_ROOT="$(pwd)/inst/vespa"
-    VESPA_INC="$VESPA_ROOT/include"
-    if [ -d "$VESPA_ROOT/lib" ]; then
-      VESPA_LIBDIR="$VESPA_ROOT/lib"
-    elif [ -d "$VESPA_ROOT/lib64" ]; then
-      VESPA_LIBDIR="$VESPA_ROOT/lib64"
+  AUTOBUILD_VTK_ROOT=""
+  if [ "$VTK_SOURCE" = "downloaded" ] && [ -d "$(pwd)/inst/vtk/lib" ]; then
+    AUTOBUILD_VTK_ROOT="$(pwd)/inst/vtk"
+  elif [ -n "$VTK_ROOT" ] && [ -d "$VTK_ROOT/lib" ]; then
+    AUTOBUILD_VTK_ROOT="$VTK_ROOT"
+  fi
+  if [ -n "$AUTOBUILD_VTK_ROOT" ]; then
+    if auto_build_vespa "$AUTOBUILD_VTK_ROOT"; then
+      VESPA_SOURCE="autobuilt"
+      VESPA_ROOT="$(pwd)/inst/vespa"
+      VESPA_INC="$VESPA_ROOT/include"
+      if [ -d "$VESPA_ROOT/lib" ]; then
+        VESPA_LIBDIR="$VESPA_ROOT/lib"
+      elif [ -d "$VESPA_ROOT/lib64" ]; then
+        VESPA_LIBDIR="$VESPA_ROOT/lib64"
+      fi
     fi
+  else
+    echo ">> Vespa absent et aucune VTK statique exploitable pour l'autobuild."
   fi
 fi
 
@@ -320,24 +345,28 @@ if [ "$VTK_SOURCE" = "system" ]; then
   VTK_CPPFLAGS=$(pkg-config --cflags "$VTK_PKG")
   VTK_LIBS=$(pkg-config --libs "$VTK_PKG")
 else
+  # VTK_SOURCE = prebuilt (VTK_ROOT) ou downloaded (inst/vtk) :
+  # VTK_INCDIR / VTK_LIBDIR ont ete positionnes par la strategie correspondante.
   # -isystem : évite le spam -Wpedantic des headers VTK (warnings --as-cran)
   VTK_CPPFLAGS="-isystem ${VTK_INCDIR}"
   for _a in "${VTK_LIBDIR}"/libvtk*.a; do
     [ -e "$_a" ] || continue
     VTK_ARCHIVES="$VTK_ARCHIVES $_a"
   done
+  if [ -z "$VTK_ARCHIVES" ]; then
+    echo ">> ERROR: aucune libvtk*.a dans ${VTK_LIBDIR} (bundle VTK incomplet ?)"
+    exit 1
+  fi
   case "$(uname -s)" in
     Linux*)
       # GNU ld = une seule passe sur les archives : le groupe est OBLIGATOIRE,
       # sinon ordre alphabétique != ordre de dépendance -> undefined references
       GROUP_OPEN="-Wl,--start-group"; GROUP_CLOSE="-Wl,--end-group"
-      VTK_SYSLIBS="-lpthread -ldl -lm"
+      VTK_SYSLIBS="-lpthread -ldl -lm -lz"
       ;;
-    Darwin*) : ;;  # ld64 re-scanne les archives jusqu'au point fixe
+    Darwin*) VTK_SYSLIBS="-lz" ;;  # ld64 re-scanne les archives jusqu'au point fixe
   esac
 fi
-VTK_CPPFLAGS="-I$(pwd)/inst/vtk/include/vtk-${VTK_MINOR}"
-VTK_LIBS="-L$(pwd)/inst/vtk/lib"
 
 # --- glog si présent (ceres peut en tirer des symboles) ---
 GLOG_LIBS=""
