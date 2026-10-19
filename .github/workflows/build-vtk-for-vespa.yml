@@ -6,12 +6,14 @@ on:
       vtk_version:
         description: 'VTK version to build'
         required: true
-        default: '9.4.1'
+        default: '9.5.2'
         type: string
   push:
     paths:
       - '.github/vtk-version.txt'
+      # both spellings during the transition (renamed file or not)
       - '.github/workflows/build-vtk-for-vespa.yml'
+      - '.github/workflows/build_vtk_for_vespa.yml'
 
 jobs:
   read-version:
@@ -20,17 +22,32 @@ jobs:
     outputs:
       vtk_version: ${{ steps.version.outputs.vtk_version }}
       vtk_minor: ${{ steps.version.outputs.vtk_minor }}
-    
+
     steps:
       - uses: actions/checkout@v7
-      
+
+      # Guard: a legacy copy of this workflow (underscore spelling) still
+      # carries the OLD packaging rules and publishes tarballs WITHOUT bin/.
+      # Two workflows sharing the same display name also makes a manual
+      # dispatch easy to aim at the wrong file.
+      - name: Guard against legacy workflow duplicate
+        shell: bash
+        run: |
+          if [ -f .github/workflows/build_vtk_for_vespa.yml ]; then
+            echo "ERROR: legacy workflow .github/workflows/build_vtk_for_vespa.yml still exists in the repo."
+            echo "It packages tarballs WITHOUT bin/ (old packaging rules)."
+            echo "Delete it and keep only build-vtk-for-vespa.yml, then re-run."
+            exit 1
+          fi
+          echo "OK: no legacy workflow duplicate found"
+
       - name: Read version from file
         id: version
         shell: bash
         run: |
           VTK_VERSION=$(cat .github/vtk-version.txt | tr -d '[:space:]')
           VTK_MINOR="${VTK_VERSION%.*}"
-          
+
           echo "vtk_version=${VTK_VERSION}" >> $GITHUB_OUTPUT
           echo "vtk_minor=${VTK_MINOR}" >> $GITHUB_OUTPUT
           echo "VTK version: ${VTK_VERSION}"
@@ -55,10 +72,10 @@ jobs:
             cmake_arch: x86_64
           - os: windows-latest
             platform: windows-x86_64
-    
+
     steps:
       - uses: actions/checkout@v7
-      
+
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -66,18 +83,18 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             cmake ninja-build build-essential \
             libgl1-mesa-dev libxt-dev libxrender-dev libxext-dev
-      
+
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install cmake ninja
-      
+
       - name: Set up R and Rtools45 (Windows)
         if: runner.os == 'Windows'
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: 'release'
           rtools-version: '45'
-      
+
       - name: Install build tools (Windows)
         if: runner.os == 'Windows'
         shell: bash
@@ -86,7 +103,7 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake \
             mingw-w64-ucrt-x86_64-ninja
           echo "export PATH=/x86_64-w64-mingw32.static.posix/bin:/ucrt64/bin:\$PATH" >> ~/.bash_profile
-      
+
       - name: Download VTK source
         shell: bash
         run: |
@@ -96,7 +113,7 @@ jobs:
           echo "Downloading $URL"
           curl -fsSL "$URL" -o vtk-src.tar.gz
           tar -xzf vtk-src.tar.gz
-      
+
       - name: Configure VTK (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
@@ -104,19 +121,22 @@ jobs:
           VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
           mkdir -p build install
           cd build
-          
+
           CMAKE_ARCH_FLAG=""
           if [ "${{ matrix.platform }}" = "darwin-x86_64" ]; then
             CMAKE_ARCH_FLAG="-DCMAKE_OSX_ARCHITECTURES=x86_64"
           elif [ "${{ matrix.platform }}" = "darwin-arm64" ]; then
             CMAKE_ARCH_FLAG="-DCMAKE_OSX_ARCHITECTURES=arm64"
           fi
-          
+
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$PWD/../install" \
             -DBUILD_SHARED_LIBS=OFF \
             -DVTK_BUILD_ALL_MODULES=OFF \
+            -DVTK_BUILD_TESTING=OFF \
+            -DVTK_BUILD_EXAMPLES=OFF \
+            -DVTK_WRAP_PYTHON=OFF \
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
             -DVTK_MODULE_ENABLE_VTK_IOXML=YES \
             -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
@@ -140,7 +160,7 @@ jobs:
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             $CMAKE_ARCH_FLAG \
             ../VTK-${VTK_VERSION}
-      
+
       - name: Configure VTK (Windows)
         if: runner.os == 'Windows'
         shell: C:\rtools45\usr\bin\bash.exe --login -eo pipefail {0}
@@ -152,28 +172,27 @@ jobs:
           export CXX="${TCHAIN}/g++"
           export AR="${TCHAIN}/ar"
           export RANLIB="${TCHAIN}/ranlib"
-          
+
           # Use GITHUB_WORKSPACE which always points to the workflow working directory
           WORK_DIR="${GITHUB_WORKSPACE}"
           SRC_DIR="${WORK_DIR}/VTK-${VTK_VERSION}"
           BUILD_DIR="${WORK_DIR}/build"
           INSTALL_DIR="${WORK_DIR}/install"
-          
+
           mkdir -p "$BUILD_DIR" "$INSTALL_DIR"
           cd "$BUILD_DIR"
-          
+
           # Convert install path to Windows format for CMake
           INSTALL_PREFIX_WIN="$(cygpath -w "$INSTALL_DIR")"
-          
+
           echo "Source directory: $SRC_DIR"
           echo "Build directory: $BUILD_DIR"
           echo "Install directory: $INSTALL_PREFIX_WIN"
-          
+
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX_WIN}" \
             -DBUILD_SHARED_LIBS=OFF \
-            -DVTK_BUILD_ALL_MODULES=OFF \
             -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
             -DCMAKE_C_FLAGS="-D__USE_MINGW_ANSI_STDIO=1 -D_GNU_SOURCE -Wno-error=incompatible-pointer-types -fcommon" \
             -DCMAKE_CXX_FLAGS="-D__USE_MINGW_ANSI_STDIO=1 -D_GNU_SOURCE" \
@@ -184,20 +203,24 @@ jobs:
             -DVTK_MODULE_ENABLE_VTK_CommonCore=YES \
             -DVTK_MODULE_ENABLE_VTK_CommonDataModel=YES \
             -DVTK_MODULE_ENABLE_VTK_CommonExecutionModel=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonMath=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonMisc=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonSystem=YES \
+            -DVTK_MODULE_ENABLE_VTK_CommonTransforms=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersCore=YES \
-            -DVTK_MODULE_ENABLE_VTK_FiltersExtraction=YES \
-            -DVTK_MODULE_ENABLE_VTK_FiltersGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersGeneral=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersModeling=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersExtraction=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersPoints=YES \
-            -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_FiltersHybrid=YES \
             -DVTK_MODULE_ENABLE_VTK_RenderingCore=YES \
+            -DVTK_MODULE_ENABLE_VTK_FiltersSources=YES \
+            -DVTK_MODULE_ENABLE_VTK_IOGeometry=YES \
             -DVTK_MODULE_ENABLE_VTK_IOXML=YES \
             -DVTK_MODULE_ENABLE_VTK_IOCore=YES \
             -DVTK_MODULE_ENABLE_VTK_IOLegacy=YES \
             -DVTK_MODULE_ENABLE_VTK_ImagingCore=YES \
-            -DVTK_MODULE_ENABLE_VTK_ImagingStencil=YES \
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             "$SRC_DIR"
 
@@ -211,59 +234,141 @@ jobs:
             cmake --build . --parallel
           fi
           cmake --install .
-      
+
+      # Verify the installed tree BEFORE packaging. bin/ is MANDATORY:
+      # VTK-targets.cmake exports the wrapping tools (VTK::WrapHierarchy ->
+      # bin/vtkWrapHierarchy-9.5) and find_package(VTK) fails as soon as a
+      # referenced file is missing ("but this file does not exist").
+      # If this step fails, the packaging rules changed or VTK changed its
+      # install layout: fail here, never publish a broken bundle.
+      - name: Verify installed tree (bin/ is mandatory)
+        shell: bash
+        run: |
+          echo ">> install/ top level:"
+          ls install
+          test -d install/bin || {
+            echo "ERROR: install/bin does not exist after cmake --install"; exit 1; }
+          echo ">> install/bin contents:"
+          ls install/bin
+          ls install/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
+            echo "ERROR: vtkWrapHierarchy not installed -> VTK-targets.cmake would reference a missing file"; exit 1; }
+          echo "OK: install/bin/vtkWrapHierarchy present"
+
       - name: Package VTK
         shell: bash
         run: |
-          VTK_VERSION="${{ github.event.inputs.vtk_version || '9.4.1' }}"
-          VTK_MINOR="${VTK_VERSION%.*}"
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
+          VTK_MINOR="${{ needs.read-version.outputs.vtk_minor }}"
           PKG="vtk-${VTK_VERSION}-vespa-${{ matrix.platform }}"
-          mkdir -p "${PKG}/include/vtk-${VTK_MINOR}" "${PKG}/lib"
-          
-          SRC_INC=$(find install/include -maxdepth 1 -name "vtk-*" -type d | sort -V | tail -1)
-          if [ -n "${SRC_INC}" ]; then
-            cp -R "${SRC_INC}/"* "${PKG}/include/vtk-${VTK_MINOR}/"
-          fi
-          find install/lib -name "*.a" -exec cp {} "${PKG}/lib/" \;
-          
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            zip -r "${PKG}.zip" "${PKG}"
-          else
-            tar -czf "${PKG}.tar.gz" "${PKG}"
-          fi
-      
+          mkdir -p "${PKG}"
+
+          cp -R install/include "${PKG}/include"
+          cp -R install/lib     "${PKG}/lib"
+          [ -d install/share ] && cp -R install/share "${PKG}/share" || true
+          test -d install/bin || { echo "ERROR: install/bin missing from the installed prefix"; exit 1; }
+          cp -R install/bin     "${PKG}/bin"
+
+          test -f "${PKG}/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" || {
+            echo "ERROR: vtk-config.cmake missing from the packaged tree"; exit 1; }
+          ls "${PKG}"/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
+            echo "ERROR: vtkWrapHierarchy missing from bin/ (find_package(VTK) will fail on the consumer side)"; exit 1; }
+
+          # Stats without pipe (resilient to SIGPIPE / pipefail)
+          set -- "${PKG}"/lib/*.a
+          echo ">> $# static archives ; for examples :"
+          for a in "$1" "$2" "$3"; do [ -e "$a" ] && echo "   $a"; done
+
+          tar -czf "${PKG}.tar.gz" "${PKG}"
+
+          # Proof of content: verify the FINAL tarball (both mandatory
+          # markers). This is the ground truth shipped to the release.
+          tar -tzf "${PKG}.tar.gz" > "manifest-${PKG}.txt"
+          grep -q "lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" "manifest-${PKG}.txt" || {
+            echo "ERROR: ${PKG}.tar.gz does not contain vtk-config.cmake"; exit 1; }
+          grep -q "bin/vtkWrapHierarchy-" "manifest-${PKG}.txt" || {
+            echo "ERROR: ${PKG}.tar.gz does not contain bin/vtkWrapHierarchy (consumer find_package(VTK) would fail)"; exit 1; }
+          echo ">> VERIFIED ${PKG}.tar.gz: vtk-config.cmake + bin/vtkWrapHierarchy present"
+
+          # Drop the staging dir + manifest so the uploaded artifact is
+          # exactly the verified tarball (no duplicate tree, predictable
+          # download path for the release job).
+          rm -rf "${PKG}" "manifest-${PKG}.txt"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: vtk-${{ matrix.platform }}
           path: |
             vtk-*-vespa-*.tar.gz
-            vtk-*-vespa-*.zip
           retention-days: 7
-  
+
   release:
     name: Create Release
-    needs: build-vtk
+    needs: [read-version, build-vtk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
-      - uses: actions/checkout@v7
-      
+      # no need for checkout : softprops/action-gh-release uses GITHUB_REPOSITORY
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
-      
+
+      # Atomic verification: presence AND content of every tarball
+      # (vtk-config.cmake + wrapping tools), no pipes (no SIGPIPE).
+      - name: Verify release completeness (atomic publish)
+        shell: bash
+        run: |
+          VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
+          VTK_MINOR="${VTK_VERSION%.*}"
+          MISSING=""
+          for p in linux-x86_64 linux-aarch64 darwin-arm64 darwin-x86_64 windows-x86_64; do
+            A="artifacts/vtk-${p}/vtk-${VTK_VERSION}-vespa-${p}.tar.gz"
+            if [ ! -s "$A" ]; then
+              echo ">> MISSING or empty : ${p}"
+              MISSING="${MISSING} ${p}"
+              continue
+            fi
+            tar -tzf "$A" > "list-${p}.txt"
+            if grep -q "lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" "list-${p}.txt" \
+               && grep -q "bin/vtkWrapHierarchy-" "list-${p}.txt"; then
+              echo ">> OK  ${p} (vtk-config.cmake + vtkWrapHierarchy)"
+            else
+              echo ">> INCOMPLETE : ${p} (vtk-config.cmake or bin/vtkWrapHierarchy missing)"
+              MISSING="${MISSING} ${p}"
+            fi
+          done
+          [ -z "${MISSING}" ] || { echo "ERROR: incomplete release :${MISSING}"; exit 1; }
+
+      # Republish guarantee: an existing release (same tag) keeps its OLD
+      # assets until it is deleted - re-uploading can silently keep stale
+      # tarballs (the "bin/ MISSING" case). Delete release + tag first so
+      # the publish step below can only upload the tarballs verified above.
+      - name: Purge stale release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="vtk-for-vespa-${{ needs.read-version.outputs.vtk_version }}"
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo ">> Stale release ${TAG} found -> deleting release + tag"
+            gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          fi
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "ERROR: stale release ${TAG} still exists after purge"; exit 1
+          fi
+          echo ">> Clean slate for ${TAG}"
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: vtk-for-vespa-${{ github.event.inputs.vtk_version || '9.4.1' }}
-          name: VTK ${{ github.event.inputs.vtk_version || '9.4.1' }} for Vespa
+          tag_name: vtk-for-vespa-${{ needs.read-version.outputs.vtk_version }}
+          name: VTK ${{ needs.read-version.outputs.vtk_version }} for Vespa
           files: |
             artifacts/**/*.tar.gz
-            artifacts/**/*.zip
+          fail_on_unmatched_files: true
           draft: false
           prerelease: false
           generate_release_notes: true

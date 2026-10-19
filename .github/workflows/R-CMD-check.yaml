@@ -56,7 +56,6 @@ jobs:
           echo "DISPLAY=:0" >> $GITHUB_ENV
 
       # pacman from Rtools is on PATH after setup-r
-      # NOTE: Do NOT install mingw-w64-ucrt-x86_64-vtk to avoid dependency conflicts
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -69,22 +68,49 @@ jobs:
             mingw-w64-ucrt-x86_64-ninja
 
       # ── Set environment variables ─────────────────────────────────────────────
-      
-      - name: Set VESPA_ROOT
+
+      - name: Export VESPA_ROOT
+        shell: bash
+        run: echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
+
+      # FIX 2026-10-19:
+      #  1. VTK_VERSION/VTK_MINOR are read BEFORE the case statement
+      #     (before: ROOT=/opt/vtk- with an empty suffix).
+      #  2. find -maxdepth 3 replaced by a direct test of the canonical path:
+      #     vtk-config.cmake sits at depth 4 (lib/cmake/vtk-9.4/<file>),
+      #     so -maxdepth 3 never matched it -> "bundle without
+      #     vtk-config.cmake" on all 3 OSes even with a perfect tarball.
+      #  3. WrapHierarchy guard: VTK-targets.cmake exports the wrapping
+      #     executables; find_package(VTK) fails if any referenced file is
+      #     missing -> fail fast here with a readable message instead.
+      - name: Fetch prebuilt VTK
         shell: bash
         run: |
-          echo "VESPA_ROOT=${{ matrix.config.vespa-root }}" >> "$GITHUB_ENV"
+          set -e
+          VTK_VERSION="$(tr -d '[:space:]' < .github/vtk-version.txt)"
+          VTK_MINOR="${VTK_VERSION%.*}"
+          case "$RUNNER_OS" in
+            Linux)   P=linux-x86_64;   ROOT="/opt/vtk-${VTK_MINOR}"; sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
+            macOS)   P=darwin-arm64;   ROOT="/opt/vtk-${VTK_MINOR}"; sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
+            Windows) P=windows-x86_64; ROOT="D:/a/vtk-${VTK_MINOR}"; mkdir -p "$ROOT" ;;
+          esac
+          curl -fsSL "https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${P}.tar.gz" -o vtk.tar.gz
+          tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
+          rm vtk.tar.gz
+          [ -f "$ROOT/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" ] || {
+            echo "ERROR: vtk-config.cmake missing from the bundle extracted in $ROOT"; exit 1; }
+          ls "$ROOT"/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
+            echo "ERROR: bin/vtkWrapHierarchy-* missing in $ROOT (stale release or package without bin/)"; exit 1; }
+          echo "VTK_ROOT=$ROOT" >> "$GITHUB_ENV"
 
       - name: Set compiler env (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          echo "CC=gcc" >> $env:GITHUB_ENV
-          echo "CXX=g++" >> $env:GITHUB_ENV
-          # DLL search path for dyn.load() within R CMD check / tests
-          echo "${{ matrix.config.vespa-root }}/bin" >> $env:GITHUB_PATH
+          echo "CC=C:/rtools45/x86_64-w64-mingw32.static.posix/bin/gcc.exe" >> $env:GITHUB_ENV
+          echo "CXX=C:/rtools45/x86_64-w64-mingw32.static.posix/bin/g++.exe" >> $env:GITHUB_ENV
           echo "C:/rtools45/ucrt64/bin" >> $env:GITHUB_PATH
-          
+
       - name: Set library path (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -95,53 +121,49 @@ jobs:
         run: |
           echo "DYLD_LIBRARY_PATH=${{ matrix.config.vespa-root }}/lib:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
 
-      # ── Vespa pre-build into inst/vespa (bundled, Priority 1 in configure) ──
-      
+      # ── Vespa pre-build into vespa-root (Priority 2 in configure) ────────────
+
+      # The key also covers vtk-version.txt and the superbuild recipe:
+      # otherwise a vespa bundle built against another VTK stays "valid"
+      # after a VTK change -> dual-VTK comes back through the cache.
       - name: Restore Vespa bundle cache
         id: cache-vespa-bundle
         uses: actions/cache/restore@v6
         with:
           path: ${{ matrix.config.vespa-root }}
-          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt') }}
+          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt', '.github/vtk-version.txt', 'tools/build-vespa/CMakeLists.txt') }}
 
       - name: Build and install Vespa
         if: steps.cache-vespa-bundle.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          T="${{ runner.temp }}"
-          T="${T//\\//}"
-          VESPA_TAG="$(cat .github/vespa-version.txt | tr -d '[:space:]')"
-          
-          # Pre-create install prefix on Unix (needs elevated permissions)
+          set -e
+          T="${RUNNER_TEMP//\\//}"
+          VESPA_TAG="$(tr -d '[:space:]' < .github/vespa-version.txt)"
           if [ "$RUNNER_OS" != "Windows" ]; then
             sudo mkdir -p "${{ matrix.config.vespa-root }}"
             sudo chown "$USER" "${{ matrix.config.vespa-root }}"
           fi
-          
           cmake -S tools/build-vespa -B "$T/vespa-build" \
             -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
-            -DVESPA_GIT_TAG="$VESPA_TAG" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=ON
-          
-          cmake --build "$T/vespa-build"
+            -DVESPA_GIT_TAG="$VESPA_TAG" -DVTK_ROOT="$VTK_ROOT"
+          cmake --build "$T/vespa-build" --parallel
 
       - name: Save Vespa cache
-        if: always() && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
+        if: success() && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ matrix.config.vespa-root }}
           key: ${{ steps.cache-vespa-bundle.outputs.cache-primary-key }}
-            
+
       # ── R check ─────────────────────────────────────────────────────────────
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
             any::rcmdcheck
-            astamm/rvtk
           needs: check
-          
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
