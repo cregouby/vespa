@@ -1,22 +1,24 @@
 #!/bin/sh
 # configure -- Unix/macOS configuration for the vespa R package.
-# Revision: tarball-static-v7
-#  - FIX 2026-10-24 (segfaults at runtime, local R CMD check): hide every
-#    symbol that comes from the static archives (libvtk*.a + libvtkCGAL*.a)
-#    from vespa.so's dynamic symbol table with -Wl,--exclude-libs,ALL (GNU ld).
-#    R loads every package DLL with RTLD_GLOBAL (library.dynam local=FALSE):
-#    rvtk.so already exports its own internal static VTK 9.5.2, and on ELF the
-#    FIRST definition in the global lookup scope wins. Without this flag,
-#    vespa.so's VTK calls -- even calls to functions vespa.so itself defines --
-#    bind to rvtk.so's independently-built VTK copy: two statically-linked
-#    VTKs merged at call level (layouts/ids/config differ) -> heap corruption
-#    -> segfaults in every rcpp_* entry point (0x50 / garbage vtable addrs).
-#    With --exclude-libs,ALL the linker binds vespa.so's archive symbols
-#    locally at static link time: nothing VTK-related is exported, nothing is
-#    interposable. macOS ld64 does not support the flag, but macOS binds with
-#    a two-level namespace, so internal archive symbols are not interposable
-#    there anyway (guarded by uname below).
-# Revision: tarball-static-v6
+# Revision: tarball-static-v8
+# v8 changelog (2026-10-25, segfault root cause closed):
+#  - v7 attempted -Wl,--exclude-libs,ALL: it only makes symbols coming FROM
+#    STATIC ARCHIVES local. The Rcpp/vtkCGAL wrapper objects also DEFINE
+#    exported VTK symbols (template instantiations, inlined functions,
+#    vtables/typeinfo) and those remained exported.
+#  - R dlopen()s packages with RTLD_GLOBAL: every exported vespa.so symbol
+#    lands in the flat process namespace next to rvtk.so (own static VTK,
+#    loaded earlier). rvtk's weak definitions then interpose with vespa's,
+#    mixing two VTK builds inside one process -> segfaults in delaunay2 /
+#    advancing_front / testthat (PoC interposition matrix A/B/C/D proved the
+#    mechanism; the no-R repro exonerated the static libraries themselves).
+#  - FIX: linker version script exporting ONLY R_init_vespa and making ALL
+#    other symbols local (archives AND wrapper objects). Rcpp registration
+#    (R_useDynamicSymbols(FALSE) set at init) means no other symbol needs
+#    dynamic visibility. Linux: -Wl,--version-script (GNU ld/lld/gold);
+#    macOS: -Wl,-exported_symbols_list; Windows: PE has no flat namespace,
+#    nothing to do (configure.win keeps --exclude-libs,ALL as hygiene).
+# v6 changelog (2026-10-24):
 #  - FIX 2026-10-24 (real local R CMD check, Ubuntu/GCC 13): the header
 #    marker vtkCGALAlgorithm.h does NOT exist in the Kitware vespa install
 #    layout. The superbuild installs FLAT headers -- vtkCGALPolyDataAlgorithm.h
@@ -481,19 +483,6 @@ else
   esac
 fi
 
-# --- Symbol isolation: keep the two statically-linked VTKs apart -------------
-# See the revision header (FIX 2026-10-24): R loads package DLLs with
-# RTLD_GLOBAL, rvtk.so exports its own static VTK, and ELF interposes the
-# first definition found in the global scope. --exclude-libs,ALL makes every
-# archive-derived symbol (VTK + vtkCGAL filters) LOCAL to vespa.so: its calls
-# bind at static link time and nothing VTK-related is exported or
-# interposable. Only GNU ld (Linux) supports the flag; macOS ld64 does not
-# but its two-level namespace already prevents this interposition.
-case "$(uname -s)" in
-  Linux*) EXCLUDE_LIBS="-Wl,--exclude-libs,ALL" ;;
-  *)      EXCLUDE_LIBS="" ;;
-esac
-
 # --- glog, if present (ceres may pull symbols from it) ---
 GLOG_LIBS=""
 for l in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /usr/lib /usr/local/lib /opt/homebrew/lib; do
@@ -502,11 +491,44 @@ done
 
 EXPORT_FLAGS="-DVTKCGALALGORITHM_EXPORT= -DVTKCGALPMP_EXPORT= -DVTKCGALPSP_EXPORT= -DVTKCGALSR_EXPORT= -DVTKCGALDELAUNAY_EXPORT="
 
+# --- Symbol localization (v8) ------------------------------------------------
+# vespa.so embeds a full STATIC VTK plus the static vtkCGAL filters. On ELF,
+# R loads every package with RTLD_GLOBAL, so ALL exported vespa.so symbols
+# share the flat process namespace with rvtk.so (own static VTK). A version
+# script keeps every symbol local except the single R entry point -- this is
+# what --exclude-libs,ALL alone could not do (wrapper-object symbols).
+# Relative paths are correct: make runs from src/ at link time.
+SYMBOL_FLAGS=""
+case "$(uname -s)" in
+  Linux*)
+    cat > src/vespa-symbols.map <<'MAP'
+{
+  global:
+    R_init_vespa;
+  local:
+    *;
+};
+MAP
+    SYMBOL_FLAGS="-Wl,--version-script=vespa-symbols.map"
+    echo ">> Symbol localization: version script (only R_init_vespa exported)"
+    ;;
+  Darwin*)
+    # Two-level namespace already prevents most interposition, but weak
+    # symbols (typeinfo/vtables) are still coalesced across images: keep
+    # vespa's internals fully private as well.
+    cat > src/vespa-symbols.exp <<'EXP'
+_R_init_vespa
+EXP
+    SYMBOL_FLAGS="-Wl,-exported_symbols_list,vespa-symbols.exp"
+    echo ">> Symbol localization: exported symbols list (only R_init_vespa exported)"
+    ;;
+esac
+
 echo ">> Generating src/Makevars..."
 cat > src/Makevars <<EOF
-# Generated by configure -- do not edit.
+# Generated by configure (tarball-static-v8) -- do not edit.
 PKG_CPPFLAGS = ${VTK_CPPFLAGS} -I${VESPA_INC} -I${CGAL_INC} ${CERES_CFLAGS} ${EXPORT_FLAGS}
-PKG_LIBS = ${GROUP_OPEN} ${VESPA_LIBS} ${VTK_ARCHIVES} ${GROUP_CLOSE} ${VTK_LIBS} ${VTK_SYSLIBS} ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${RPATH_FLAG} ${EXCLUDE_LIBS}
+PKG_LIBS = ${GROUP_OPEN} ${VESPA_LIBS} ${VTK_ARCHIVES} ${GROUP_CLOSE} ${VTK_LIBS} ${VTK_SYSLIBS} ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${RPATH_FLAG} ${SYMBOL_FLAGS}
 EOF
 
 echo ">> Configuration completed successfully."
