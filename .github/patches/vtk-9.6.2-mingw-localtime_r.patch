@@ -1,0 +1,3 @@
+-#ifdef VTK_COMPILER_MSVC
++#if defined(VTK_COMPILER_MSVC) || (defined(_WIN32) && !defined(__CYGWIN__))
+         localtime_s(&local, &t);
