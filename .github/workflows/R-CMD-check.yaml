@@ -32,6 +32,44 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # R refuses to run 'configure' without the executable bit
+      # ("'configure' exists but is not executable"). Enforce it here so a
+      # lost git file mode never breaks CI; the repo should still track the
+      # mode (git update-index --chmod=+x configure).
+      - name: Ensure configure is executable (Unix)
+        if: runner.os != 'Windows'
+        run: chmod +x configure
+
+      # Build artifacts and legacy fossils must never reach the source tarball:
+      #   inst/vtk, inst/vespa  -> regenerated at INSTALL time by configure
+      #     (R CMD build would ship 200+ MB of static archives and executables:
+      #     "executable files" WARNING + "object files" NOTE + "portable file
+      #     names" NOTE)
+      #   configure_v3          -> legacy leftover file at top level
+      #   src/Makevars.in       -> fossil of the old rvtk-driven configure;
+      #     configure now writes src/Makevars directly, and R flags GNU
+      #     extensions in Makevars.in ("GNU extensions in Makefiles" WARNING)
+      - name: Source tree hygiene guard
+        shell: bash
+        run: |
+          set -e
+          bad=""
+          for f in inst/vtk inst/vespa configure_v3 src/Makevars.in; do
+            if [ -e "$f" ]; then
+              echo "ERROR: '$f' must not exist in the source tree."
+              bad="yes"
+            fi
+          done
+          if [ -n "$bad" ]; then
+            echo ""
+            echo "Remove the file(s) listed above from the repository:"
+            echo "  git rm -r --cached inst/vtk inst/vespa   # if ever committed"
+            echo "  rm -rf inst/vtk inst/vespa"
+            echo "  git rm configure_v3 src/Makevars.in"
+            echo "  echo 'inst/vtk/' >> .gitignore   # inst/vespa is already ignored"
+            exit 1
+          fi
+
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: ${{ runner.os == 'Linux' }}
