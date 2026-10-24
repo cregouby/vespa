@@ -106,7 +106,7 @@ fi
 
 # Strategy 1: System VTK via pkg-config (monolithic package is fine)
 if command -v pkg-config >/dev/null 2>&1; then
-  for vtk_pkg in vtk-9.6 vtk-9.5 vtk-9.4 vtk-9.3 vtk-9.2 vtk-9.1 vtk; do
+  for vtk_pkg in vtk-9.7 vtk-9.6 vtk-9.5 vtk-9.4 vtk-9.3 vtk-9.2 vtk-9.1 vtk; do
     if pkg-config --exists "$vtk_pkg" 2>/dev/null; then
       VTK_VERSION=$(pkg-config --modversion "$vtk_pkg")
       VTK_FOUND=true
@@ -120,7 +120,7 @@ fi
 
 # Strategy 2: Download prebuilt VTK from GitHub releases
 if [ "$VTK_FOUND" = "false" ]; then
-  VTK_VERSION="9.5.2"
+  VTK_VERSION="9.6.2"
   VTK_MINOR="${VTK_VERSION%.*}"
 
   OS=$(uname -s)
