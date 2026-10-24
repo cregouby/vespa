@@ -1,29 +1,160 @@
 #!/bin/sh
-# configure.win -- revision tarball-static-v4
-# Changelog vs v3:
-#  - glog added to the link closure (ucrt64 ceres depends on glog, otherwise
-#    undefined reference to google::LogMessage::* when linking vespa.so).
-#  - (repo-side task) delete the legacy shared inst/vespa bundle: the
-#    libvtkCGAL*.a glob also matches *.dll.a import libraries, which links
-#    against the DLL -> missing DLL at runtime.
+# configure.win -- Windows configuration for the vespa R package.
+# Revision: tarball-static-v6
+# Changelog vs v5:
+#  - FIX 2026-10-24 (real local R CMD check, Ubuntu/GCC 13): the header
+#    marker vtkCGALAlgorithm.h does NOT exist in the Kitware vespa install
+#    layout. The superbuild installs FLAT headers -- vtkCGALPolyDataAlgorithm.h
+#    (base class of every filter), vtkCGALHelper.h -- plus per-module headers
+#    such as vtkCGALAlgorithmModule.h. Detection now uses the real header
+#    names, flat or one level deep, via vespa_include_dir().
+#  - Stale *.dll.a import libraries no longer make a bundle look valid:
+#    has_real_archive() only counts real static archives.
+# Changelog vs v4:
+#  - Vespa detection hardened: the header marker is searched FLAT
+#    (include/) AND one level deep (include/*/), and the libraries are
+#    searched in lib/ AND lib64/. The exact install layout of
+#    the Kitware vespa project (vtk_module_build HEADERS_DESTINATION) has
+#    never been exercised in CI before, so the detection must not depend on
+#    a single guess.
+#  - Extra candidate root: ${RUNNER_TEMP}/vespa-build/vespa-install. If the
+#    superbuild ever ignores -DINSTALL_PREFIX, it falls back to its own
+#    default prefix inside the build tree; this candidate finds it anyway.
+#  - Full diagnostics dumped when detection fails: the next CI run is then a
+#    complete diagnosis (tree layout, env visibility) instead of a dead end.
+#  - (kept from v4) glog in the link closure (ucrt64 ceres depends on it),
+#    explicit refusal of *.dll.a import libraries.
 set -e
 UCRT="C:/rtools45/ucrt64"
 
-# --- Static Vespa: inst/vespa bundle first, then $VESPA_ROOT -----------------
-if [ -f "inst/vespa/include/vtkCGALAlgorithm.h" ]; then
-  FOUND_ROOT="$(pwd)/inst/vespa"
-elif [ -n "${VESPA_ROOT}" ] && [ -f "${VESPA_ROOT}/include/vtkCGALAlgorithm.h" ]; then
-  FOUND_ROOT="${VESPA_ROOT}"
-else
-  echo ">> ERROR: Vespa not found (inst/vespa or \$VESPA_ROOT)" >&2; exit 1
+# --- Vespa detection helpers (errexit-safe; see configure for rationale) -----
+# has_real_archive DIR: succeed if DIR holds at least one libvtkCGAL*.a that
+# is NOT a Windows import library (*.dll.a). Only called from if/elif
+# conditions, so set -e is not triggered by the non-zero return.
+has_real_archive() {
+  for f in "$1"/libvtkCGAL*.a; do
+    [ -e "$f" ] || continue
+    case "$f" in *.dll.a) continue ;; esac
+    return 0
+  done
+  return 1
+}
+
+# vespa_include_dir ROOT: print the include directory that holds the real
+# vtkCGAL headers, or print nothing. The Kitware vespa project does NOT ship
+# a vtkCGALAlgorithm.h; the stable flat headers are vtkCGALPolyDataAlgorithm.h
+# and vtkCGALHelper.h. One-level-deep versioned layouts are accepted too.
+# Always returns 0 (set -e safety); callers test the output with [ -n ].
+vespa_include_dir() {
+  if [ -f "$1/include/vtkCGALPolyDataAlgorithm.h" ] || \
+     [ -f "$1/include/vtkCGALHelper.h" ]; then
+    echo "$1/include"
+  else
+    for h in "$1"/include/*/vtkCGALPolyDataAlgorithm.h \
+             "$1"/include/*/vtkCGALHelper.h; do
+      [ -e "$h" ] || continue
+      echo "${h%/*}"
+      break
+    done
+  fi
+  return 0
+}
+
+# --- Static Vespa detection --------------------------------------------------
+# Candidate roots, in priority order:
+#   0: inst/vespa bundle inside the package (autobuild output or legacy junk)
+#   1: $VESPA_ROOT (set by the CI workflow / by the user)
+#   2: superbuild default prefix under RUNNER_TEMP (INSTALL_PREFIX not applied)
+# A candidate is accepted only when it provides BOTH the real headers AND at
+# least one real static archive; a half-valid candidate (e.g. a stale bundle
+# holding only *.dll.a import libraries) is SKIPPED and the next candidate is
+# tried, so a stale inst/vespa can never mask a valid $VESPA_ROOT.
+FOUND_ROOT=""
+FOUND_INC=""
+FOUND_LIB=""
+
+RUNNER_TEMP_N=""
+if [ -n "${RUNNER_TEMP}" ]; then
+  RUNNER_TEMP_N="$(echo "${RUNNER_TEMP}" | tr '\\' '/')"
 fi
 
+# try_candidate ROOT: accept ROOT when headers + real static archives are both
+# present (sets FOUND_ROOT/FOUND_INC/FOUND_LIB); silently do nothing otherwise.
+# Always returns 0 (set -e safety).
+try_candidate() {
+  _inc="$(vespa_include_dir "$1")"
+  [ -n "$_inc" ] || return 0
+  _lib=""
+  if [ -d "$1/lib" ] && has_real_archive "$1/lib"; then
+    _lib="$1/lib"
+  elif [ -d "$1/lib64" ] && has_real_archive "$1/lib64"; then
+    _lib="$1/lib64"
+  fi
+  [ -n "$_lib" ] || return 0
+  FOUND_ROOT="$1"
+  FOUND_INC="$_inc"
+  FOUND_LIB="$_lib"
+  return 0
+}
+
+try_candidate "$(pwd)/inst/vespa"
+if [ -z "${FOUND_ROOT}" ] && [ -n "${VESPA_ROOT}" ]; then
+  try_candidate "${VESPA_ROOT}"
+fi
+if [ -z "${FOUND_ROOT}" ] && [ -n "${RUNNER_TEMP_N}" ]; then
+  try_candidate "${RUNNER_TEMP_N}/vespa-build/vespa-install"
+fi
+
+if [ -z "${FOUND_ROOT}" ] || [ -z "${FOUND_INC}" ] || [ -z "${FOUND_LIB}" ]; then
+  echo ">> ERROR: static Vespa bundle not found." >&2
+  echo ">> Diagnostics dump:" >&2
+  echo ">>   pwd         = $(pwd)" >&2
+  echo ">>   VESPA_ROOT  = '${VESPA_ROOT}'" >&2
+  echo ">>   RUNNER_TEMP = '${RUNNER_TEMP}'" >&2
+  if [ -n "${VESPA_ROOT}" ] && [ -d "${VESPA_ROOT}" ]; then
+    echo ">>   --- contents of ${VESPA_ROOT} ---" >&2
+    ls -la "${VESPA_ROOT}" >&2
+    if [ -d "${VESPA_ROOT}/include" ]; then
+      echo ">>   --- contents of ${VESPA_ROOT}/include ---" >&2
+      ls "${VESPA_ROOT}/include" >&2
+    else
+      echo ">>   (no include/ subdirectory under VESPA_ROOT)" >&2
+    fi
+    if [ -d "${VESPA_ROOT}/lib" ]; then
+      echo ">>   --- contents of ${VESPA_ROOT}/lib ---" >&2
+      ls "${VESPA_ROOT}/lib" >&2
+    else
+      echo ">>   (no lib/ subdirectory under VESPA_ROOT)" >&2
+    fi
+  else
+    echo ">>   VESPA_ROOT is empty or does not exist." >&2
+    echo ">>   If VESPA_ROOT is set in the workflow env but empty here, the" >&2
+    echo ">>   R build step did not propagate the environment to configure.win." >&2
+  fi
+  if [ -n "${RUNNER_TEMP_N}" ] && [ -d "${RUNNER_TEMP_N}/vespa-build" ]; then
+    echo ">>   --- contents of ${RUNNER_TEMP_N}/vespa-build ---" >&2
+    ls "${RUNNER_TEMP_N}/vespa-build" >&2
+    if [ -d "${RUNNER_TEMP_N}/vespa-build/vespa-install" ]; then
+      echo ">>   --- contents of .../vespa-build/vespa-install ---" >&2
+      ls "${RUNNER_TEMP_N}/vespa-build/vespa-install" >&2
+    fi
+  fi
+  exit 1
+fi
+echo ">> Vespa found: ${FOUND_ROOT}"
+echo ">>   include: ${FOUND_INC}"
+echo ">>   lib:     ${FOUND_LIB}"
+
+# --- Collect the static Vespa archives ---------------------------------------
+# Real archives only: stale *.dll.a import libraries (from an old shared
+# bundle) are skipped with a warning -- they are PE/COFF import archives and
+# would break the mingw link. A bundle with NO real archive at all is already
+# rejected by try_candidate() above; the guard below is belt-and-suspenders.
 VESPA_LIBS=""
-for f in "${FOUND_ROOT}"/lib/libvtkCGAL*.a; do
+for f in "${FOUND_LIB}"/libvtkCGAL*.a; do
   [ -e "$f" ] || continue
   case "$f" in
-    *.dll.a) echo ">> ERROR: $f is an import library (obsolete shared bundle)." >&2
-             echo ">>         Rebuild vespa with BUILD_SHARED_LIBS=OFF." >&2; exit 1 ;;
+    *.dll.a) echo ">> WARNING: skipping stale import library $f" >&2; continue ;;
   esac
   VESPA_LIBS="${VESPA_LIBS} $f"
 done
@@ -58,8 +189,8 @@ fi
 SYSTEM_LIBS="-lopengl32 -lglu32 -lws2_32 -liphlpapi -lpsapi -ldbghelp -luser32 -lgdi32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -lkernel32"
 
 cat > src/Makevars.win <<EOF
-# Generated by configure.win (tarball-static-v4) -- do not edit.
-PKG_CPPFLAGS = -isystem ${VTK_INCDIR} -I${FOUND_ROOT}/include ${EXTRA_CPPFLAGS} ${EXPORT_FLAGS}
+# Generated by configure.win (tarball-static-v5) -- do not edit.
+PKG_CPPFLAGS = -isystem ${VTK_INCDIR} -I${FOUND_INC} ${EXTRA_CPPFLAGS} ${EXPORT_FLAGS}
 PKG_LIBS = -Wl,--start-group ${VESPA_LIBS} ${VTK_ARCHIVES} -Wl,--end-group -L${UCRT}/lib ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${SYSTEM_LIBS}
 EOF
 

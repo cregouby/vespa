@@ -1,12 +1,32 @@
 #!/bin/sh
 # configure -- Unix/macOS configuration for the vespa R package.
-# Revision: tarball-static-v4
+# Revision: tarball-static-v6
+#  - FIX 2026-10-24 (real local R CMD check, Ubuntu/GCC 13): the header
+#    marker vtkCGALAlgorithm.h does NOT exist in the Kitware vespa install
+#    layout. The superbuild installs FLAT headers -- vtkCGALPolyDataAlgorithm.h
+#    (base class of every filter), vtkCGALHelper.h -- plus per-module headers
+#    such as vtkCGALAlgorithmModule.h. A successful auto-build was therefore
+#    rejected by its own post-build re-check (VESPA_INC stayed empty).
+#    Detection now uses vtkCGALPolyDataAlgorithm.h / vtkCGALHelper.h, flat
+#    or one level deep.
+#  - FIX: Priority 1 (bundled inst/vespa) accepts STATIC archives too (the
+#    whole strategy is static), not just .so/.dylib.
+#  - FIX: *.dll.a Windows import libraries are ignored everywhere (a stale
+#    Windows bundle extracted into inst/vespa must not poison a Unix build).
+#  - FIX: auto_build_vespa wipes inst/vespa before building so stale zips,
+#    old *.dll.a or partial installs cannot poison the post-build check.
 #  - FIX: removed the two lines that overwrote VTK_CPPFLAGS/VTK_LIBS with
 #    inst/vtk paths that do not exist in CI.
 #  - FIX: Strategy 2 (download) now sets VTK_INCDIR/VTK_LIBDIR.
 #  - FIX: auto_build_vespa passes VTK_ROOT to the superbuild and stays
 #    static (the superbuild requires VTK_ROOT; -DBUILD_SHARED_LIBS=ON
 #    alone would hit a CMake FATAL_ERROR).
+#  - FIX: Vespa detection hardened: the header marker is searched FLAT
+#    (include/) AND one level deep (include/*/), lib/ and lib64/ both
+#    accepted. The exact install layout of the Kitware vespa project has
+#    never been exercised in CI before, so detection must not depend on a
+#    single guess.
+#  - FIX: full diagnostics dumped when Vespa is still not found.
 
 print_install_instructions() {
   echo ""
@@ -86,7 +106,7 @@ fi
 
 # Strategy 1: System VTK via pkg-config (monolithic package is fine)
 if command -v pkg-config >/dev/null 2>&1; then
-  for vtk_pkg in vtk-9.4 vtk-9.3 vtk-9.2 vtk-9.1 vtk; do
+  for vtk_pkg in vtk-9.6 vtk-9.5 vtk-9.4 vtk-9.3 vtk-9.2 vtk-9.1 vtk; do
     if pkg-config --exists "$vtk_pkg" 2>/dev/null; then
       VTK_VERSION=$(pkg-config --modversion "$vtk_pkg")
       VTK_FOUND=true
@@ -100,7 +120,7 @@ fi
 
 # Strategy 2: Download prebuilt VTK from GitHub releases
 if [ "$VTK_FOUND" = "false" ]; then
-  VTK_VERSION="9.4.1"
+  VTK_VERSION="9.5.2"
   VTK_MINOR="${VTK_VERSION%.*}"
 
   OS=$(uname -s)
@@ -197,19 +217,55 @@ VESPA_INC=""
 VESPA_LIBDIR=""
 VESPA_SOURCE=""
 
-# Priority 1: bundled libs (Unix only)
+# --- Helpers for Vespa detection ---------------------------------------------
+# has_real_archive DIR: succeed if DIR holds at least one libvtkCGAL*.a that
+# is NOT a Windows import library (*.dll.a). *.dll.a files are PE/COFF import
+# archives left over from a Windows build; feeding them to a Unix linker
+# fails or silently produces a broken vespa.so.
+has_real_archive() {
+  for f in "$1"/libvtkCGAL*.a; do
+    [ -e "$f" ] || continue
+    case "$f" in *.dll.a) continue ;; esac
+    return 0
+  done
+  return 1
+}
+
+# vespa_include_dir ROOT: print the include directory that holds the real
+# vtkCGAL headers, or print nothing. The Kitware vespa project does NOT ship
+# a vtkCGALAlgorithm.h; the stable flat headers are vtkCGALPolyDataAlgorithm.h
+# (base class of every filter) and vtkCGALHelper.h. One-level-deep versioned
+# layouts (include/vespa-0.5/) are accepted too. Always returns 0 so callers
+# test the output with [ -n ] (configure.win runs under set -e).
+vespa_include_dir() {
+  if [ -f "$1/include/vtkCGALPolyDataAlgorithm.h" ] || \
+     [ -f "$1/include/vtkCGALHelper.h" ]; then
+    echo "$1/include"
+  else
+    for h in "$1"/include/*/vtkCGALPolyDataAlgorithm.h \
+             "$1"/include/*/vtkCGALHelper.h; do
+      [ -e "$h" ] || continue
+      echo "${h%/*}"
+      break
+    done
+  fi
+  return 0
+}
+
+# Priority 1: bundled libs (Unix only) -- static (.a) or shared (.so/.dylib)
 if [ -d "inst/vespa/include" ] && [ -d "inst/vespa/lib" ] && {
+     has_real_archive inst/vespa/lib                    ||
      ls inst/vespa/lib/libvtkCGALAlgorithm*.so    >/dev/null 2>&1 ||
      ls inst/vespa/lib/libvtkCGALAlgorithm*.dylib >/dev/null 2>&1
    }; then
   VESPA_ROOT="$(pwd)/inst/vespa"
-  VESPA_INC="$VESPA_ROOT/include"
+  VESPA_INC="$(vespa_include_dir "$VESPA_ROOT")"
   VESPA_LIBDIR="$VESPA_ROOT/lib"
   VESPA_SOURCE="bundled"
   echo ">> Checking for Vespa... OK (Unix bundle in inst/vespa)"
 fi
 
-# Priority 2: system installation
+# Priority 2: system installation (VESPA_ROOT first, then standard prefixes)
 if [ -z "$VESPA_LIBDIR" ]; then
   if [ -n "$VESPA_ROOT" ]; then
     VESPA_CANDIDATES="$VESPA_ROOT"
@@ -217,19 +273,26 @@ if [ -z "$VESPA_LIBDIR" ]; then
     VESPA_CANDIDATES="/usr/local /opt/vespa $HOME/vespa /opt/homebrew /usr"
   fi
   for d in $VESPA_CANDIDATES; do
-    if [ -d "$d/include" ] && ls $d/include/vtkCGAL* >/dev/null 2>&1; then
-      if [ -d "$d/lib" ] && ls $d/lib/libvtkCGALAlgorithm* >/dev/null 2>&1; then
-        VESPA_LIBDIR="$d/lib"
-      elif [ -d "$d/lib64" ] && ls $d/lib64/libvtkCGALAlgorithm* >/dev/null 2>&1; then
-        VESPA_LIBDIR="$d/lib64"
-      else
-        continue
-      fi
-      VESPA_ROOT="$d"
-      VESPA_INC="$d/include"
-      VESPA_SOURCE="system"
-      break
+    # Header marker: flat include/ first, then one level deep
+    # (e.g. include/vespa-0.5/ style layouts). Uses the real header names
+    # installed by the Kitware project (see vespa_include_dir above).
+    _INC="$(vespa_include_dir "$d")"
+    [ -n "$_INC" ] || continue
+    if [ -d "$d/lib" ] && { has_real_archive "$d/lib" ||
+         ls $d/lib/libvtkCGAL*.so >/dev/null 2>&1 ||
+         ls $d/lib/libvtkCGAL*.dylib >/dev/null 2>&1; }; then
+      VESPA_LIBDIR="$d/lib"
+    elif [ -d "$d/lib64" ] && { has_real_archive "$d/lib64" ||
+         ls $d/lib64/libvtkCGAL*.so >/dev/null 2>&1 ||
+         ls $d/lib64/libvtkCGAL*.dylib >/dev/null 2>&1; }; then
+      VESPA_LIBDIR="$d/lib64"
+    else
+      continue
     fi
+    VESPA_ROOT="$d"
+    VESPA_INC="$_INC"
+    VESPA_SOURCE="system"
+    break
   done
   if [ -n "$VESPA_LIBDIR" ]; then
     echo ">> Checking for Vespa... OK (system install in $VESPA_ROOT)"
@@ -246,6 +309,11 @@ auto_build_vespa() {
 
   echo ">> Vespa not found on the system."
   echo ">> Attempting automatic build into ${INST_DIR} ..."
+
+  # Wipe any stale bundle first: leftover Windows import libraries (*.dll.a),
+  # old release zips or a partial install would poison the post-build
+  # re-check (and R CMD build would ship megabytes of junk inside inst/).
+  rm -rf "$INST_DIR"
 
   if ! command -v cmake >/dev/null 2>&1; then
     echo ">> cmake is required for automatic Vespa build but was not found."
@@ -290,10 +358,14 @@ if [ -z "$VESPA_LIBDIR" ]; then
     if auto_build_vespa "$AUTOBUILD_VTK_ROOT"; then
       VESPA_SOURCE="autobuilt"
       VESPA_ROOT="$(pwd)/inst/vespa"
-      VESPA_INC="$VESPA_ROOT/include"
-      if [ -d "$VESPA_ROOT/lib" ]; then
+      VESPA_INC="$(vespa_include_dir "$VESPA_ROOT")"
+      if [ -d "$VESPA_ROOT/lib" ] && { has_real_archive "$VESPA_ROOT/lib" ||
+           ls "$VESPA_ROOT"/lib/libvtkCGAL*.so >/dev/null 2>&1 ||
+           ls "$VESPA_ROOT"/lib/libvtkCGAL*.dylib >/dev/null 2>&1; }; then
         VESPA_LIBDIR="$VESPA_ROOT/lib"
-      elif [ -d "$VESPA_ROOT/lib64" ]; then
+      elif [ -d "$VESPA_ROOT/lib64" ] && { has_real_archive "$VESPA_ROOT/lib64" ||
+           ls "$VESPA_ROOT"/lib64/libvtkCGAL*.so >/dev/null 2>&1 ||
+           ls "$VESPA_ROOT"/lib64/libvtkCGAL*.dylib >/dev/null 2>&1; }; then
         VESPA_LIBDIR="$VESPA_ROOT/lib64"
       fi
     fi
@@ -302,8 +374,29 @@ if [ -z "$VESPA_LIBDIR" ]; then
   fi
 fi
 
-if [ -z "$VESPA_LIBDIR" ]; then
+if [ -z "$VESPA_LIBDIR" ] || [ -z "$VESPA_INC" ]; then
   echo ">> Checking for Vespa... FAILED."
+  echo ">> Diagnostics dump:"
+  echo ">>   pwd        = $(pwd)"
+  echo ">>   VESPA_ROOT = '${VESPA_ROOT}'"
+  if [ -n "$VESPA_ROOT" ] && [ -d "$VESPA_ROOT" ]; then
+    echo ">>   --- contents of ${VESPA_ROOT} ---"
+    ls -la "$VESPA_ROOT"
+    if [ -d "$VESPA_ROOT/include" ]; then
+      echo ">>   --- contents of ${VESPA_ROOT}/include ---"
+      ls "$VESPA_ROOT/include"
+    else
+      echo ">>   (no include/ subdirectory under VESPA_ROOT)"
+    fi
+    if [ -d "$VESPA_ROOT/lib" ]; then
+      echo ">>   --- contents of ${VESPA_ROOT}/lib ---"
+      ls "$VESPA_ROOT/lib"
+    else
+      echo ">>   (no lib/ subdirectory under VESPA_ROOT)"
+    fi
+  else
+    echo ">>   VESPA_ROOT is empty or does not exist."
+  fi
   print_install_instructions
   exit 1
 fi
@@ -313,6 +406,9 @@ VESPA_STATIC=false
 VESPA_LIBS=""
 for f in "$VESPA_LIBDIR"/libvtkCGAL*.a; do
   [ -e "$f" ] || continue
+  case "$f" in
+    *.dll.a) continue ;;  # Windows import library: unusable on Unix
+  esac
   VESPA_STATIC=true
   VESPA_LIBS="$VESPA_LIBS $f"
 done
