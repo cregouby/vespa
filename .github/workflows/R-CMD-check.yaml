@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-latest, vespa-root: /opt/vespa }
+          - { os: ubuntu-24.04, vespa-root: /opt/vespa }
           - { os: macos-latest, vespa-root: /opt/vespa }
           - { os: windows-latest, vespa-root: D:/a/vespa, experimental: true }
     env:
