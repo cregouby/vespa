@@ -10,3 +10,5 @@ inst/doc
 inst/vespa
 docs
 src/vtk_libs.rsp
+inst/vtk/
+..Rcheck

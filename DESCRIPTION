@@ -6,11 +6,10 @@ Description: Provides R wrappers for all 'Vespa' filters (isotropic re-meshing, 
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-SystemRequirements: VTK >= 9.4, CGAL >= 5.5, vespa >= 1.0
+SystemRequirements: VTK >= 9.4, CGAL >= 5.5, vespa >= 1.1
 Imports:
     cli,
     Rcpp,
-    rvtk,
     rlang,
     sf
 Suggests: 
@@ -20,8 +19,7 @@ Suggests:
     testthat (>= 3.0.0),
     tictoc
 LinkingTo: 
-    Rcpp,
-    rvtk
+    Rcpp
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://cregouby.github.io/vespa/, https://github.com/cregouby/vespa
