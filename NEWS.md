@@ -1,6 +1,8 @@
 # vespa 0.6.0
 
 * Reorganize documentation website.
+* Add CI/CD workflows relying on exposed VTK 9.7 / 9.6 / 9.5 builds (#1)
+* add 2 vignettes to website
 
 # vespa 0.5.0
 
