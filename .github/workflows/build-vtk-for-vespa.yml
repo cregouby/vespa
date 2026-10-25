@@ -141,6 +141,7 @@ jobs:
       # unaffected versions (e.g. 9.5.2) and future fixed versions are left
       # untouched, so this step is version-agnostic and idempotent.
       - name: Apply MinGW localtime patch (if needed)
+        if: runner.os == 'Windows'
         shell: bash
         run: |
           VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
