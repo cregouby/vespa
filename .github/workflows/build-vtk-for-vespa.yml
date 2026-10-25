@@ -132,11 +132,14 @@ jobs:
           echo "Downloading $URL"
           curl -fsSL "$URL" -o vtk-src.tar.gz
           tar -xzf vtk-src.tar.gz
-          
+
       # MinGW-w64 (Rtools) targets Windows but is NOT MSVC: VTK 9.6.x guards
       # the secure-CRT localtime_s with VTK_COMPILER_MSVC only, so MinGW falls
       # through to POSIX localtime_r, which mingw-w64 does not declare
-      # ("'localtime_r' was not declared" in IO/Image/vtkMedicalImageProperties.cxx).
+      # ("'localtime_r' was not declared"). The offending pattern appears at
+      # three sites in VTK 9.6.2: IO/Image/vtkMedicalImageProperties.cxx,
+      # IO/MINC/vtkMINCImageWriter.cxx and IO/MINC/vtkMNITransformWriter.cxx
+      # (IOMINC is pulled in transitively by the build).
       # The patch is applied ONLY when the offending pattern is present:
       # unaffected versions (e.g. 9.5.2) and future fixed versions are left
       # untouched, so this step is version-agnostic and idempotent.
@@ -169,11 +172,17 @@ jobs:
             fi
           )
 
-          grep -q "defined(VTK_COMPILER_MSVC) || (defined(_WIN32)" "${TARGET}" || {
-            echo "ERROR: patch applied but verification pattern not found in ${TARGET}"
-            exit 1
-          }
-          echo ">> PATCHED ${TARGET}: localtime_s branch now also covers MinGW (_WIN32)"
+          for TARGET in \
+            "${SRC_DIR}/IO/Image/vtkMedicalImageProperties.cxx" \
+            "${SRC_DIR}/IO/MINC/vtkMINCImageWriter.cxx" \
+            "${SRC_DIR}/IO/MINC/vtkMNITransformWriter.cxx"
+          do
+            grep -q "defined(VTK_COMPILER_MSVC) || (defined(_WIN32)" "${TARGET}" || {
+              echo "ERROR: patch applied but verification pattern not found in ${TARGET}"
+              exit 1
+            }
+            echo ">> PATCHED ${TARGET}: localtime_s branch now also covers MinGW (_WIN32)"
+          done
 
       - name: Configure VTK (Linux/macOS)
         if: runner.os != 'Windows'
