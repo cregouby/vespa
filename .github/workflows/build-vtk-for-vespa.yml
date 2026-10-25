@@ -140,11 +140,15 @@ jobs:
       # three sites in VTK 9.6.2: IO/Image/vtkMedicalImageProperties.cxx,
       # IO/MINC/vtkMINCImageWriter.cxx and IO/MINC/vtkMNITransformWriter.cxx
       # (IOMINC is pulled in transitively by the build).
-      # The patch is applied ONLY when the offending pattern is present:
-      # unaffected versions (e.g. 9.5.2) and future fixed versions are left
-      # untouched, so this step is version-agnostic and idempotent.
-      - name: Apply MinGW localtime patch (if needed)
-        if: runner.os == 'Windows'
+      # The step is gated at the Actions level (Windows runner AND VTK 9.6.2
+      # only): other versions built for vespa (e.g. 9.5.2) and future releases
+      # are never touched, so an upstream context drift cannot break their
+      # builds. The in-script grep on the offending pattern is kept as a second
+      # line of defence (already-patched tree, tarball differing from the pinned
+      # version, idempotent re-runs). To patch another affected version, add a
+      # dedicated patch file + step rather than widening this condition.
+      - name: Apply MinGW localtime patch (Windows + VTK 9.6.2 only)
+        if: runner.os == 'Windows' && needs.read-version.outputs.vtk_version == '9.6.2'
         shell: bash
         run: |
           VTK_VERSION="${{ needs.read-version.outputs.vtk_version }}"
