@@ -15,7 +15,12 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../poisson_reco.html">Poisson reconstruction</a></li>
+    <li><a class="dropdown-item" href="../signed_distance_function.html">Signed-distance-function usage</a></li>
+  </ul></li>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/cregouby/vespa/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
@@ -33,6 +38,9 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="vespa-060">vespa 0.6.0<a class="anchor" aria-label="anchor" href="#vespa-060"></a></h2>
 <ul><li>Reorganize documentation website.</li>
+<li>Add CI/CD workflows relying on exposed VTK 9.7 / 9.6 / 9.5 builds (<a href="https://github.com/cregouby/vespa/issues/1" class="external-link">#1</a>)</li>
+<li>add 2 vignettes to website</li>
+<li>Fix Windows R CMD check “compiled code” warning: under header-only CGAL 6.x (rtools45/msys2), the CGAL assertion handler and CORE number-type headers emit <code>std::cerr</code>/<code>std::cout</code>/<code>abort</code>/<code>exit</code> references into the package’s own objects. <code>configure.win</code> now generates a console-output shim forwarding those messages to <code>REprintf()</code> (R API) and dropping the <code>abort()</code>/<code>exit()</code> branches so violations fall through to the existing <code>throw</code> path.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.0" id="vespa-050">vespa 0.5.0<a class="anchor" aria-label="anchor" href="#vespa-050"></a></h2>

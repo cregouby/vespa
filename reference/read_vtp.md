@@ -27,9 +27,6 @@ point-cloud VTP files (no polygon cells), `$it` is a 3×0 empty matrix.
 ``` r
 f <- system.file("testdata", "sphere_open.vtp", package = "vespa")
 mesh <- read_vtp(f)
-#> Error: XMLPolyDataReader: ERROR: In ./IO/XML/vtkXMLReader.cxx, line 521
-#> vtkXMLPolyDataReader (0x561bf78c75e0): Error parsing input file.  ReadXMLInformation aborting.
-#> 
 print(mesh)
-#> Error: object 'mesh' not found
+#> <mesh3d> 162 vertices 319 faces
 ```

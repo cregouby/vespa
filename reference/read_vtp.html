@@ -19,7 +19,12 @@ are supported."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../poisson_reco.html">Poisson reconstruction</a></li>
+    <li><a class="dropdown-item" href="../signed_distance_function.html">Signed-distance-function usage</a></li>
+  </ul></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/cregouby/vespa/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
@@ -66,11 +71,8 @@ matrix.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"sphere_open.vtp"</span>, package <span class="op">=</span> <span class="st">"vespa"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">mesh</span> <span class="op">&lt;-</span> <span class="fu">read_vtp</span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> XMLPolyDataReader: ERROR: In ./IO/XML/vtkXMLReader.cxx, line 521</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> vtkXMLPolyDataReader (0x561bf78c75e0): Error parsing input file.  ReadXMLInformation aborting.</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'mesh' not found</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">&lt;mesh3d&gt;</span> <span style="color: #0000BB;">162</span> vertices <span style="color: #0000BB;">319</span> faces</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
