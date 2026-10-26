@@ -1,53 +1,382 @@
 #!/bin/sh
-# configure.win -- use bundled or VESPA_ROOT Vespa binaries
+# configure.win -- Windows configuration for the vespa R package.
+# Revision: tarball-static-v9.2
+# Changelog vs v9.1:
+#  - FIX 2026-10-26 (real R CMD check, rtools45/Windows): "checking compiled
+#    code" flagged '_ZSt4cerr', '_ZSt4cout', 'abort' and 'exit' inside
+#    vespa.dll in every object of the package. Root cause: rtools45/msys2
+#    ships CGAL 6.x installed as header-only by default, so the CGAL
+#    assertion handler (CGAL/assertions_impl.h) and the CORE number-type
+#    headers referenced by it are compiled INTO this package's TUs and those
+#    error paths emit std::cerr / std::cout / std::abort() / std::exit().
+#    CGAL 5.x setups (Debian/Ubuntu, macOS/Homebrew) build the same code
+#    paths through a compiled libCGAL (or simply never instantiate them) and
+#    stay silent, which is why the Windows check was the only one failing.
+#    Fix: when CGAL >= 6 is detected, a "shim" include directory is generated
+#    under ${TEMP}/vespa-cgal-shim and placed FIRST in the include search
+#    path: it contains sed-rewritten copies of the offending headers only.
+#    The message streams become tiny self-contained sinks forwarding to
+#    REprintf() (R console stderr; proper R API, so R CMD check accepts it)
+#    and the abort()/exit() branches of the CGAL failure handler are removed
+#    so a violation falls through to the existing throw path. Literally the
+#    same mechanism has been tested byte-for-byte against local compiles of
+#    every TU with the exact msys2 CGAL 6.2 headers; no other symbol of the
+#    original warning report survives. Keep in sync if the msys2 CGAL file
+#    set changes (the generation is grep-driven over the offending headers,
+#    so new offending files are picked up automatically).
+# Changelog vs v8.1:
+#  - FIX 2026-10-25 (CI, rtools45/Windows): the pkg-config branch of the
+#    ceres link closure escaped the v8.1 metis probe, yet on the rtools45
+#    runner `pkg-config --libs ceres` succeeds AND its output lists -lmetis
+#    -- while ucrt64/lib ships no metis archive -- so ld died with
+#    "cannot find -lmetis". -lmetis is now unconditionally stripped from
+#    the ceres link flags and re-added only when a real metis archive
+#    exists in ${UCRT}/lib, whichever code path emitted it (pkg-config or
+#    the manual suitesparse fallback). METIS stays optional in Ceres and
+#    SuiteSparse, so this changes nothing for toolchains that ship it.
+# Changelog vs v8:
+#  - FIX 2026-10-25 (real R CMD check, rtools45/Windows): the hardcoded
+#    suitesparse fallback emitted -lmetis unconditionally, but the
+#    msys2/rtools45 ceres-solver package is built WITHOUT METIS (its pacman
+#    deps are only cc-libs, glog and suitesparse; the ucrt64 repo ships no
+#    libmetis), so ld failed with "cannot find -lmetis". -lmetis is now
+#    emitted only when the import/static archive is present in
+#    ${UCRT}/lib (same probe style as glog). METIS is optional in Ceres
+#    and SuiteSparse, so omitting it changes nothing when the libraries
+#    were built without it; if a future toolchain needs it but does not
+#    ship the archive, ld will say "undefined reference to METIS_*" and a
+#    dedicated patch (or installing mingw-w64-ucrt-x86_64-metis) is the
+#    answer.
+# Changelog vs v6:
+#  - PE/COFF DLLs have no flat namespace: there is no ELF-style interposition
+#    between vespa.dll and rvtk.dll, so the version-script mechanism used on
+#    Unix (configure v8) is NOT needed here.
+#  - FIX (v7 follow-up): -Wl,--exclude-libs,ALL is added to the link line:
+#    mingw ld supports it for PE and stops static-library symbols from being
+#    re-exported through vespa.dll (smaller export surface, cleaner R CMD
+#    check symbol report).
+# Changelog vs v5:
+#  - FIX 2026-10-24 (real local R CMD check, Ubuntu/GCC 13): the header
+#    marker vtkCGALAlgorithm.h does NOT exist in the Kitware vespa install
+#    layout. The superbuild installs FLAT headers -- vtkCGALPolyDataAlgorithm.h
+#    (base class of every filter), vtkCGALHelper.h -- plus per-module headers
+#    such as vtkCGALAlgorithmModule.h. Detection now uses the real header
+#    names, flat or one level deep, via vespa_include_dir().
+#  - Stale *.dll.a import libraries no longer make a bundle look valid:
+#    has_real_archive() only counts real static archives.
+# Changelog vs v4:
+#  - Vespa detection hardened: the header marker is searched FLAT
+#    (include/) AND one level deep (include/*/), and the libraries are
+#    searched in lib/ AND lib64/. The exact install layout of
+#    the Kitware vespa project (vtk_module_build HEADERS_DESTINATION) has
+#    never been exercised in CI before, so the detection must not depend on
+#    a single guess.
+#  - Extra candidate root: ${RUNNER_TEMP}/vespa-build/vespa-install. If the
+#    superbuild ever ignores -DINSTALL_PREFIX, it falls back to its own
+#    default prefix inside the build tree; this candidate finds it anyway.
+#  - Full diagnostics dumped when detection fails: the next CI run is then a
+#    complete diagnosis (tree layout, env visibility) instead of a dead end.
+#  - (kept from v4) glog in the link closure (ucrt64 ceres depends on it),
+#    explicit refusal of *.dll.a import libraries.
+set -e
+UCRT="C:/rtools45/ucrt64"
 
-echo ">> EXECUTING configure.win from $(pwd)"
-echo ">> configure.win revision: bundled-v1"
-echo ">> VTK flags will be provided by rvtk at make time."
+# --- Vespa detection helpers (errexit-safe; see configure for rationale) -----
+# has_real_archive DIR: succeed if DIR holds at least one libvtkCGAL*.a that
+# is NOT a Windows import library (*.dll.a). Only called from if/elif
+# conditions, so set -e is not triggered by the non-zero return.
+has_real_archive() {
+  for f in "$1"/libvtkCGAL*.a; do
+    [ -e "$f" ] || continue
+    case "$f" in *.dll.a) continue ;; esac
+    return 0
+  done
+  return 1
+}
 
-# Look for Vespa: bundled inst/vespa first, then VESPA_ROOT env var
+# vespa_include_dir ROOT: print the include directory that holds the real
+# vtkCGAL headers, or print nothing. The Kitware vespa project does NOT ship
+# a vtkCGALAlgorithm.h; the stable flat headers are vtkCGALPolyDataAlgorithm.h
+# and vtkCGALHelper.h. One-level-deep versioned layouts are accepted too.
+# Always returns 0 (set -e safety); callers test the output with [ -n ].
+vespa_include_dir() {
+  if [ -f "$1/include/vtkCGALPolyDataAlgorithm.h" ] || \
+     [ -f "$1/include/vtkCGALHelper.h" ]; then
+    echo "$1/include"
+  else
+    for h in "$1"/include/*/vtkCGALPolyDataAlgorithm.h \
+             "$1"/include/*/vtkCGALHelper.h; do
+      [ -e "$h" ] || continue
+      echo "${h%/*}"
+      break
+    done
+  fi
+  return 0
+}
+
+# --- Static Vespa detection --------------------------------------------------
+# Candidate roots, in priority order:
+#   0: inst/vespa bundle inside the package (autobuild output or legacy junk)
+#   1: $VESPA_ROOT (set by the CI workflow / by the user)
+#   2: superbuild default prefix under RUNNER_TEMP (INSTALL_PREFIX not applied)
+# A candidate is accepted only when it provides BOTH the real headers AND at
+# least one real static archive; a half-valid candidate (e.g. a stale bundle
+# holding only *.dll.a import libraries) is SKIPPED and the next candidate is
+# tried, so a stale inst/vespa can never mask a valid $VESPA_ROOT.
 FOUND_ROOT=""
-if [ -d "inst/vespa/include" ]; then
-  FOUND_ROOT="$(pwd)/inst/vespa"
-  echo ">> Using Vespa binaries bundled in inst/vespa"
-elif [ -n "${VESPA_ROOT}" ] && [ -d "${VESPA_ROOT}/include" ]; then
-  FOUND_ROOT="${VESPA_ROOT}"
-  echo ">> Using VESPA_ROOT=${VESPA_ROOT}"
-else
-  echo ">> ERROR: no Vespa installation found (looked in inst/vespa and \$VESPA_ROOT)." >&2
-  exit 1
+FOUND_INC=""
+FOUND_LIB=""
+
+RUNNER_TEMP_N=""
+if [ -n "${RUNNER_TEMP}" ]; then
+  RUNNER_TEMP_N="$(echo "${RUNNER_TEMP}" | tr '\\' '/')"
 fi
 
-VESPA_ROOT="${FOUND_ROOT}"
+# try_candidate ROOT: accept ROOT when headers + real static archives are both
+# present (sets FOUND_ROOT/FOUND_INC/FOUND_LIB); silently do nothing otherwise.
+# Always returns 0 (set -e safety).
+try_candidate() {
+  _inc="$(vespa_include_dir "$1")"
+  [ -n "$_inc" ] || return 0
+  _lib=""
+  if [ -d "$1/lib" ] && has_real_archive "$1/lib"; then
+    _lib="$1/lib"
+  elif [ -d "$1/lib64" ] && has_real_archive "$1/lib64"; then
+    _lib="$1/lib64"
+  fi
+  [ -n "$_lib" ] || return 0
+  FOUND_ROOT="$1"
+  FOUND_INC="$_inc"
+  FOUND_LIB="$_lib"
+  return 0
+}
 
-# Collect import libraries (Windows uses .dll.a for shared libs)
+try_candidate "$(pwd)/inst/vespa"
+if [ -z "${FOUND_ROOT}" ] && [ -n "${VESPA_ROOT}" ]; then
+  try_candidate "${VESPA_ROOT}"
+fi
+if [ -z "${FOUND_ROOT}" ] && [ -n "${RUNNER_TEMP_N}" ]; then
+  try_candidate "${RUNNER_TEMP_N}/vespa-build/vespa-install"
+fi
+
+if [ -z "${FOUND_ROOT}" ] || [ -z "${FOUND_INC}" ] || [ -z "${FOUND_LIB}" ]; then
+  echo ">> ERROR: static Vespa bundle not found." >&2
+  echo ">> Diagnostics dump:" >&2
+  echo ">>   pwd         = $(pwd)" >&2
+  echo ">>   VESPA_ROOT  = '${VESPA_ROOT}'" >&2
+  echo ">>   RUNNER_TEMP = '${RUNNER_TEMP}'" >&2
+  if [ -n "${VESPA_ROOT}" ] && [ -d "${VESPA_ROOT}" ]; then
+    echo ">>   --- contents of ${VESPA_ROOT} ---" >&2
+    ls -la "${VESPA_ROOT}" >&2
+    if [ -d "${VESPA_ROOT}/include" ]; then
+      echo ">>   --- contents of ${VESPA_ROOT}/include ---" >&2
+      ls "${VESPA_ROOT}/include" >&2
+    else
+      echo ">>   (no include/ subdirectory under VESPA_ROOT)" >&2
+    fi
+    if [ -d "${VESPA_ROOT}/lib" ]; then
+      echo ">>   --- contents of ${VESPA_ROOT}/lib ---" >&2
+      ls "${VESPA_ROOT}/lib" >&2
+    else
+      echo ">>   (no lib/ subdirectory under VESPA_ROOT)" >&2
+    fi
+  else
+    echo ">>   VESPA_ROOT is empty or does not exist." >&2
+    echo ">>   If VESPA_ROOT is set in the workflow env but empty here, the" >&2
+    echo ">>   R build step did not propagate the environment to configure.win." >&2
+  fi
+  if [ -n "${RUNNER_TEMP_N}" ] && [ -d "${RUNNER_TEMP_N}/vespa-build" ]; then
+    echo ">>   --- contents of ${RUNNER_TEMP_N}/vespa-build ---" >&2
+    ls "${RUNNER_TEMP_N}/vespa-build" >&2
+    if [ -d "${RUNNER_TEMP_N}/vespa-build/vespa-install" ]; then
+      echo ">>   --- contents of .../vespa-build/vespa-install ---" >&2
+      ls "${RUNNER_TEMP_N}/vespa-build/vespa-install" >&2
+    fi
+  fi
+  exit 1
+fi
+echo ">> Vespa found: ${FOUND_ROOT}"
+echo ">>   include: ${FOUND_INC}"
+echo ">>   lib:     ${FOUND_LIB}"
+
+# --- Collect the static Vespa archives ---------------------------------------
+# Real archives only: stale *.dll.a import libraries (from an old shared
+# bundle) are skipped with a warning -- they are PE/COFF import archives and
+# would break the mingw link. A bundle with NO real archive at all is already
+# rejected by try_candidate() above; the guard below is belt-and-suspenders.
 VESPA_LIBS=""
-for f in "${VESPA_ROOT}"/lib/lib*.dll.a; do
-  [ -e "${f}" ] || continue
-  n="${f##*/}"; n="${n%.dll.a}"
-  VESPA_LIBS="${VESPA_LIBS} -l${n#lib}"
+for f in "${FOUND_LIB}"/libvtkCGAL*.a; do
+  [ -e "$f" ] || continue
+  case "$f" in
+    *.dll.a) echo ">> WARNING: skipping stale import library $f" >&2; continue ;;
+  esac
+  VESPA_LIBS="${VESPA_LIBS} $f"
 done
+[ -n "${VESPA_LIBS}" ] || { echo ">> ERROR: no libvtkCGAL*.a (rebuild vespa with BUILD_SHARED_LIBS=OFF)" >&2; exit 1; }
 
-if [ -z "${VESPA_LIBS}" ]; then
-  echo ">> ERROR: no Vespa libraries found in ${VESPA_ROOT}/lib" >&2
-  exit 1
+# --- VTK: prebuilt tarball, static branch only -------------------------------
+[ -n "${VTK_ROOT}" ] || { echo ">> ERROR: VTK_ROOT is empty" >&2; exit 1; }
+VTK_INCDIR="$(echo "${VTK_ROOT}"/include/vtk-*/vtkObject.h | sed 's|/vtkObject.h||')"
+[ -f "${VTK_INCDIR}/vtkObject.h" ] || { echo ">> ERROR: invalid VTK under ${VTK_ROOT}" >&2; exit 1; }
+VTK_ARCHIVES=""
+for a in "${VTK_ROOT}"/lib/libvtk*.a; do
+  [ -e "$a" ] || continue
+  VTK_ARCHIVES="${VTK_ARCHIVES} $a"
+done
+[ -n "${VTK_ARCHIVES}" ] || { echo ">> ERROR: no libvtk*.a under ${VTK_ROOT}/lib" >&2; exit 1; }
+
+# --- Third-party headers required by vtkCGAL*.h: CGAL, Eigen, Boost ----------
+EXTRA_CPPFLAGS="-I${UCRT}/include -I${UCRT}/include/eigen3"
+EXPORT_FLAGS="-DVTKCGALALGORITHM_EXPORT= -DVTKCGALPMP_EXPORT= -DVTKCGALPSP_EXPORT= -DVTKCGALSR_EXPORT= -DVTKCGALDELAUNAY_EXPORT="
+
+# --- CGAL 6.x console-output shim (header-only CGAL on rtools45/msys2) -------
+# See changelog vs v9.1 for the full rationale. In short: when the msys2 CGAL
+# headers are picked up directly by the package's TUs (CGAL >= 6 ships
+# header-only by default), the CGAL error paths emit std::cerr / std::cout /
+# std::abort() / std::exit() references, which R CMD check refuses. We shadow
+# ONLY the offending headers with sed-rewritten copies, placed first on the
+# include search path. The replacement sink uses REprintf(): CRAN-approved
+# R API, no ordering constraint with Rcpp.h, works under -std=gnu++17.
+# Everything is data-driven: a header is copied only if it still contains one
+# of the offending constructs, so a future CGAL packaging fix disables the
+# shim by itself.
+CGAL_SHIM=""
+CGAL_INCDIR="${UCRT}/include/CGAL"
+if [ -f "${CGAL_INCDIR}/version.h" ]; then
+  CGAL_MAJOR="$(grep '^#define CGAL_VERSION ' "${CGAL_INCDIR}/version.h" | head -n 1 | sed 's/^#define CGAL_VERSION[[:space:]]*//' | cut -d. -f1)"
+  CGAL_MINOR="$(grep '^#define CGAL_VERSION ' "${CGAL_INCDIR}/version.h" | head -n 1 | sed 's/^#define CGAL_VERSION[[:space:]]*//' | cut -d. -f2)"
+  echo ">> CGAL headers detected: ${CGAL_MAJOR}.${CGAL_MINOR}"
+  if [ -n "${CGAL_MAJOR}" ] && [ "${CGAL_MAJOR}" -ge 6 ] 2>/dev/null; then
+    SHIM_BASE="${TEMP:-${TMP:-${TMPDIR:-/tmp}}}"
+    SHIM_BASE="$(echo "${SHIM_BASE}" | tr '\\' '/')"
+    CGAL_SHIM="${SHIM_BASE}/vespa-cgal-shim"
+    if mkdir -p "${CGAL_SHIM}/CGAL/CORE" 2>/dev/null; then
+      rm -rf "${CGAL_SHIM}/CGAL"
+      mkdir -p "${CGAL_SHIM}/CGAL/CORE"
+      echo ">> CGAL >= 6: generating console-output shim under ${CGAL_SHIM}"
+
+      cat > "${CGAL_SHIM}/vespa_cgal_streams.h" <<'VESPA_EOF'
+#ifndef VESPA_CGAL_STREAMS_H
+#define VESPA_CGAL_STREAMS_H
+#include <cstdio>
+#include <ostream>
+#include <streambuf>
+extern "C" {
+#include <R.h>
+}
+namespace vespa_cgal_console {
+
+// streambuf / ostream pair forwarding every written character stream to
+// REprintf(): messages land on the R console (stderr side), exactly where
+// std::cerr output is expected to surface in an interactive R session. The
+// classes are self-contained and never replace std::cerr itself, so any
+// other CGAL-internal variable that must stay a std::ostream* is unaffected.
+class r_output_buf : public std::streambuf {
+protected:
+  int_type overflow(int_type ch) override {
+    if (ch == traits_type::eof()) return traits_type::not_eof(ch);
+    char c = static_cast<char>(ch);
+    REprintf("%c", c);
+    return ch;
+  }
+  std::streamsize xsputn(const char* s, std::streamsize n) override {
+    if (n <= 0) return 0;
+    REprintf("%.*s", static_cast<int>(n), s);
+    return n;
+  }
+};
+
+class r_output_stream : public std::ostream {
+  r_output_buf buf_;
+public:
+  r_output_stream() : std::ostream(&buf_) {}
+};
+
+inline r_output_stream& cerr_sink() {
+  static r_output_stream s;
+  return s;
+}
+inline r_output_stream& cout_sink() {
+  static r_output_stream s;
+  return s;
+}
+} // namespace vespa_cgal_console
+#endif
+VESPA_EOF
+
+      # Cover the CORE headers (number-type implementation) and the CGAL
+      # assertion handler: those are the only files whose body is compiled
+      # into the package's TUs under CGAL >= 6 while printing/aborting.
+      for f in "${CGAL_INCDIR}/assertions_impl.h" "${CGAL_INCDIR}"/CORE/*.h; do
+        [ -e "$f" ] || continue
+        grep -q 'std::cerr\|std::cout\|std::abort\|std::exit' "$f" || continue
+        rel="${f#${CGAL_INCDIR}/}"
+        dest="${CGAL_SHIM}/CGAL/${rel}"
+        mkdir -p "$(dirname "${dest}")"
+        {
+          echo '#include "vespa_cgal_streams.h"'
+          sed -e 's/std::cerr/vespa_cgal_console::cerr_sink()/g' \
+              -e 's/std::cout/vespa_cgal_console::cout_sink()/g' \
+              -e '/^[[:space:]]*std::abort[[:space:]]*(/d' \
+              -e '/^[[:space:]]*std::exit[[:space:]]*(/d' "$f"
+        } > "${dest}"
+        echo ">>   shimmed: CGAL/${rel}"
+      done
+      echo ">> CGAL shim generation: OK"
+      # CGAL_SHIM stays at the shim ROOT (holding CGAL/...): <CGAL/...> include
+      # paths must resolve through this directory, not through a CGAL subdir.
+    else
+      echo ">> WARNING: cannot create ${CGAL_SHIM}; CGAL >= 6 console-output shim skipped" >&2
+      CGAL_SHIM=""
+    fi
+  fi
+fi
+if [ -n "${CGAL_SHIM}" ]; then
+  CGAL_SHIM_FLAGS="-I\"${CGAL_SHIM}\""
+else
+  CGAL_SHIM_FLAGS=""
 fi
 
-echo ">> Vespa libs: ${VESPA_LIBS}"
+# --- Link closure: ceres (+ transitive suitesparse), glog, gmp, mpfr ---------
+# METIS is an OPTIONAL part of the suitesparse closure: msys2/rtools45 build
+# ceres and suitesparse WITHOUT it and the ucrt64 repo ships no libmetis,
+# while other toolchains (Homebrew, plain MSYS2) do ship it. The archive
+# presence in ${UCRT}/lib is the single source of truth: -lmetis found in
+# any ceres link flags (rtools45 ceres.pc lists it!) is stripped, then
+# re-added only when the archive exists (see changelog vs v8.1).
+METIS_OK=""
+if [ -e "${UCRT}/lib/libmetis.dll.a" ] || [ -e "${UCRT}/lib/libmetis.a" ]; then
+  METIS_OK="y"
+  echo ">> metis detected (kept in the ceres/suitesparse closure)"
+fi
 
-# Copy Vespa DLLs to inst/libs/x64/ so Windows finds them alongside vespa.dll
-mkdir -p inst/libs/x64
-for dll in "${VESPA_ROOT}"/bin/lib*.dll; do
-  [ -f "$dll" ] && cp "$dll" inst/libs/x64/
-done
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --libs ceres >/dev/null 2>&1; then
+  CERES_LIBS=$(pkg-config --libs ceres)
+  if [ -z "${METIS_OK}" ]; then
+    _CERES_TMP=""
+    for _t in ${CERES_LIBS}; do
+      case "${_t}" in -lmetis) continue ;; esac
+      _CERES_TMP="${_CERES_TMP} ${_t}"
+    done
+    CERES_LIBS="${_CERES_TMP# }"
+    echo ">> metis not found in ${UCRT}/lib: stripped -lmetis from ceres link flags"
+  fi
+else
+  METIS_SLOT=""
+  if [ -n "${METIS_OK}" ]; then METIS_SLOT="-lmetis"; fi
+  CERES_LIBS="-lceres -lcholmod -lamd -lcamd -lccolamd -lcolamd -lsuitesparseconfig -lspqr ${METIS_SLOT} -llapack -lblas"
+fi
+GLOG_LIBS=""
+if [ -e "${UCRT}/lib/libglog.dll.a" ] || [ -e "${UCRT}/lib/libglog.a" ]; then
+  GLOG_LIBS="-lglog"
+  echo ">> glog detected (ucrt64 ceres depends on it)"
+fi
+SYSTEM_LIBS="-lopengl32 -lglu32 -lws2_32 -liphlpapi -lpsapi -ldbghelp -luser32 -lgdi32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -lkernel32"
 
-# Generate Makevars.win
 cat > src/Makevars.win <<EOF
-VTK_CPPFLAGS = \$(shell "\$(R_HOME)/bin\$(R_ARCH_BIN)/Rscript" --vanilla ../tools/configure.R --cppflags)
-VTK_LIBS     = \$(shell "\$(R_HOME)/bin\$(R_ARCH_BIN)/Rscript" --vanilla ../tools/configure.R --libs)
-
-PKG_CPPFLAGS = \$(VTK_CPPFLAGS) -I${VESPA_ROOT}/include
-PKG_LIBS     = \$(VTK_LIBS) -L${VESPA_ROOT}/lib ${VESPA_LIBS}
+# Generated by configure.win (tarball-static-v9.2) -- do not edit.
+PKG_CPPFLAGS = ${CGAL_SHIM_FLAGS} -isystem ${VTK_INCDIR} -I${FOUND_INC} ${EXTRA_CPPFLAGS} ${EXPORT_FLAGS} -DCGAL_NDEBUG
+PKG_LIBS = -Wl,--exclude-libs,ALL -Wl,--start-group ${VESPA_LIBS} ${VTK_ARCHIVES} -Wl,--end-group -L${UCRT}/lib ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${SYSTEM_LIBS}
 EOF
 
 echo ">> Configuration completed successfully."

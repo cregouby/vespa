@@ -20,49 +20,74 @@ jobs:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      CMAKE_GENERATOR: Ninja
+      # Priority 2 in configure: prebuilt Vespa bundle location
+      VESPA_ROOT: /opt/vespa
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: r-lib/actions/setup-pandoc@v2
 
       - uses: r-lib/actions/setup-r@v2
 
-      # Install system dependencies for CGAL, VTK, and Ceres
-      - name: Install system dependencies
+      - name: Install system dependencies and set toolchain env
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libcgal-dev \
-            libvtk9-dev \
-            libceres-dev \
-            cmake \
-            build-essential \
-            libboost-all-dev \
-            libeigen3-dev
+            libcgal-dev libceres-dev cmake ninja-build \
+            build-essential libboost-all-dev libeigen3-dev \
+            libx11-dev libgl1-mesa-dev libglu1-mesa-dev
+          echo "LD_LIBRARY_PATH=/opt/vespa/lib:${LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
 
-      # Cache Vespa build
-      - name: Cache Vespa
-        id: cache-vespa
-        uses: actions/cache@v4
+      # Fetch the prebuilt VTK bundle pinned by .github/vtk-version.txt
+      - name: Fetch prebuilt VTK
+        run: |
+          set -e
+          VTK_VERSION="$(tr -d '[:space:]' < .github/vtk-version.txt)"
+          VTK_MINOR="${VTK_VERSION%.*}"
+          ROOT="/opt/vtk-${VTK_MINOR}"
+          sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT"
+          curl -fsSL "https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-linux-x86_64.tar.gz" -o vtk.tar.gz
+          tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
+          rm vtk.tar.gz
+          [ -f "$ROOT/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" ] || {
+            echo "ERROR: vtk-config.cmake missing from the bundle extracted in $ROOT"; exit 1; }
+          ls "$ROOT"/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
+            echo "ERROR: bin/vtkWrapHierarchy-* missing in $ROOT (stale release or package without bin/)"; exit 1; }
+          echo "VTK_ROOT=$ROOT" >> "$GITHUB_ENV"
+
+      # Build the Vespa bundle into /opt/vespa from the pinned Git tag.
+      # The cache key covers the VTK and Vespa versions plus the superbuild
+      # recipe, so a bundle built against another VTK is never reused.
+      - name: Restore Vespa bundle cache
+        id: cache-vespa-bundle
+        uses: actions/cache/restore@v6
         with:
-          path: |
-            /usr/local/include/vtkCGAL*
-            /usr/local/lib/libvtkCGAL*
-          key: vespa-${{ runner.os }}-${{ hashFiles('.github/vespa-version.txt') }}
+          path: /opt/vespa
+          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt', '.github/vtk-version.txt', 'tools/build-vespa/CMakeLists.txt') }}
 
       - name: Build and install Vespa
-        if: steps.cache-vespa.outputs.cache-hit != 'true'
+        if: steps.cache-vespa-bundle.outputs.cache-hit != 'true'
         run: |
-          cd /tmp
-          git clone https://gitlab.kitware.com/vtk/meshing/vespa.git
-          cd vespa
-          mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
-          make -j$(nproc)
-          sudo make install
-          
+          set -e
+          T="${RUNNER_TEMP//\\//}"
+          VESPA_TAG="$(tr -d '[:space:]' < .github/vespa-version.txt)"
+          sudo mkdir -p /opt/vespa
+          sudo chown "$USER" /opt/vespa
+          cmake -S tools/build-vespa -B "$T/vespa-build" \
+            -DINSTALL_PREFIX=/opt/vespa \
+            -DVESPA_GIT_TAG="$VESPA_TAG" -DVTK_ROOT="$VTK_ROOT"
+          cmake --build "$T/vespa-build" --parallel
+
+      - name: Save Vespa cache
+        if: success() && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: /opt/vespa
+          key: ${{ steps.cache-vespa-bundle.outputs.cache-primary-key }}
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::pkgdown, local::.
