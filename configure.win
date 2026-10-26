@@ -1,6 +1,29 @@
 #!/bin/sh
 # configure.win -- Windows configuration for the vespa R package.
-# Revision: tarball-static-v9.1
+# Revision: tarball-static-v9.2
+# Changelog vs v9.1:
+#  - FIX 2026-10-26 (real R CMD check, rtools45/Windows): "checking compiled
+#    code" flagged '_ZSt4cerr', '_ZSt4cout', 'abort' and 'exit' inside
+#    vespa.dll in every object of the package. Root cause: rtools45/msys2
+#    ships CGAL 6.x installed as header-only by default, so the CGAL
+#    assertion handler (CGAL/assertions_impl.h) and the CORE number-type
+#    headers referenced by it are compiled INTO this package's TUs and those
+#    error paths emit std::cerr / std::cout / std::abort() / std::exit().
+#    CGAL 5.x setups (Debian/Ubuntu, macOS/Homebrew) build the same code
+#    paths through a compiled libCGAL (or simply never instantiate them) and
+#    stay silent, which is why the Windows check was the only one failing.
+#    Fix: when CGAL >= 6 is detected, a "shim" include directory is generated
+#    under ${TEMP}/vespa-cgal-shim and placed FIRST in the include search
+#    path: it contains sed-rewritten copies of the offending headers only.
+#    The message streams become tiny self-contained sinks forwarding to
+#    REprintf() (R console stderr; proper R API, so R CMD check accepts it)
+#    and the abort()/exit() branches of the CGAL failure handler are removed
+#    so a violation falls through to the existing throw path. Literally the
+#    same mechanism has been tested byte-for-byte against local compiles of
+#    every TU with the exact msys2 CGAL 6.2 headers; no other symbol of the
+#    original warning report survives. Keep in sync if the msys2 CGAL file
+#    set changes (the generation is grep-driven over the offending headers,
+#    so new offending files are picked up automatically).
 # Changelog vs v8.1:
 #  - FIX 2026-10-25 (CI, rtools45/Windows): the pkg-config branch of the
 #    ceres link closure escaped the v8.1 metis probe, yet on the rtools45
@@ -206,6 +229,114 @@ done
 EXTRA_CPPFLAGS="-I${UCRT}/include -I${UCRT}/include/eigen3"
 EXPORT_FLAGS="-DVTKCGALALGORITHM_EXPORT= -DVTKCGALPMP_EXPORT= -DVTKCGALPSP_EXPORT= -DVTKCGALSR_EXPORT= -DVTKCGALDELAUNAY_EXPORT="
 
+# --- CGAL 6.x console-output shim (header-only CGAL on rtools45/msys2) -------
+# See changelog vs v9.1 for the full rationale. In short: when the msys2 CGAL
+# headers are picked up directly by the package's TUs (CGAL >= 6 ships
+# header-only by default), the CGAL error paths emit std::cerr / std::cout /
+# std::abort() / std::exit() references, which R CMD check refuses. We shadow
+# ONLY the offending headers with sed-rewritten copies, placed first on the
+# include search path. The replacement sink uses REprintf(): CRAN-approved
+# R API, no ordering constraint with Rcpp.h, works under -std=gnu++17.
+# Everything is data-driven: a header is copied only if it still contains one
+# of the offending constructs, so a future CGAL packaging fix disables the
+# shim by itself.
+CGAL_SHIM=""
+CGAL_INCDIR="${UCRT}/include/CGAL"
+if [ -f "${CGAL_INCDIR}/version.h" ]; then
+  CGAL_MAJOR="$(grep '^#define CGAL_VERSION ' "${CGAL_INCDIR}/version.h" | head -n 1 | sed 's/^#define CGAL_VERSION[[:space:]]*//' | cut -d. -f1)"
+  CGAL_MINOR="$(grep '^#define CGAL_VERSION ' "${CGAL_INCDIR}/version.h" | head -n 1 | sed 's/^#define CGAL_VERSION[[:space:]]*//' | cut -d. -f2)"
+  echo ">> CGAL headers detected: ${CGAL_MAJOR}.${CGAL_MINOR}"
+  if [ -n "${CGAL_MAJOR}" ] && [ "${CGAL_MAJOR}" -ge 6 ] 2>/dev/null; then
+    SHIM_BASE="${TEMP:-${TMP:-${TMPDIR:-/tmp}}}"
+    SHIM_BASE="$(echo "${SHIM_BASE}" | tr '\\' '/')"
+    CGAL_SHIM="${SHIM_BASE}/vespa-cgal-shim"
+    if mkdir -p "${CGAL_SHIM}/CGAL/CORE" 2>/dev/null; then
+      rm -rf "${CGAL_SHIM}/CGAL"
+      mkdir -p "${CGAL_SHIM}/CGAL/CORE"
+      echo ">> CGAL >= 6: generating console-output shim under ${CGAL_SHIM}"
+
+      cat > "${CGAL_SHIM}/vespa_cgal_streams.h" <<'VESPA_EOF'
+#ifndef VESPA_CGAL_STREAMS_H
+#define VESPA_CGAL_STREAMS_H
+#include <cstdio>
+#include <ostream>
+#include <streambuf>
+extern "C" {
+#include <R.h>
+}
+namespace vespa_cgal_console {
+
+// streambuf / ostream pair forwarding every written character stream to
+// REprintf(): messages land on the R console (stderr side), exactly where
+// std::cerr output is expected to surface in an interactive R session. The
+// classes are self-contained and never replace std::cerr itself, so any
+// other CGAL-internal variable that must stay a std::ostream* is unaffected.
+class r_output_buf : public std::streambuf {
+protected:
+  int_type overflow(int_type ch) override {
+    if (ch == traits_type::eof()) return traits_type::not_eof(ch);
+    char c = static_cast<char>(ch);
+    REprintf("%c", c);
+    return ch;
+  }
+  std::streamsize xsputn(const char* s, std::streamsize n) override {
+    if (n <= 0) return 0;
+    REprintf("%.*s", static_cast<int>(n), s);
+    return n;
+  }
+};
+
+class r_output_stream : public std::ostream {
+  r_output_buf buf_;
+public:
+  r_output_stream() : std::ostream(&buf_) {}
+};
+
+inline r_output_stream& cerr_sink() {
+  static r_output_stream s;
+  return s;
+}
+inline r_output_stream& cout_sink() {
+  static r_output_stream s;
+  return s;
+}
+} // namespace vespa_cgal_console
+#endif
+VESPA_EOF
+
+      # Cover the CORE headers (number-type implementation) and the CGAL
+      # assertion handler: those are the only files whose body is compiled
+      # into the package's TUs under CGAL >= 6 while printing/aborting.
+      for f in "${CGAL_INCDIR}/assertions_impl.h" "${CGAL_INCDIR}"/CORE/*.h; do
+        [ -e "$f" ] || continue
+        grep -q 'std::cerr\|std::cout\|std::abort\|std::exit' "$f" || continue
+        rel="${f#${CGAL_INCDIR}/}"
+        dest="${CGAL_SHIM}/CGAL/${rel}"
+        mkdir -p "$(dirname "${dest}")"
+        {
+          echo '#include "vespa_cgal_streams.h"'
+          sed -e 's/std::cerr/vespa_cgal_console::cerr_sink()/g' \
+              -e 's/std::cout/vespa_cgal_console::cout_sink()/g' \
+              -e '/^[[:space:]]*std::abort[[:space:]]*(/d' \
+              -e '/^[[:space:]]*std::exit[[:space:]]*(/d' "$f"
+        } > "${dest}"
+        echo ">>   shimmed: CGAL/${rel}"
+      done
+      echo ">> CGAL shim generation: OK"
+      # CGAL_SHIM stays at the shim ROOT (holding CGAL/...): <CGAL/...> include
+      # paths must resolve through this directory, not through a CGAL subdir.
+    else
+      echo ">> WARNING: cannot create ${CGAL_SHIM}; CGAL >= 6 console-output shim skipped" >&2
+      CGAL_SHIM=""
+    fi
+  fi
+fi
+if [ -n "${CGAL_SHIM}" ]; then
+  CGAL_SHIM_FLAGS="-I\"${CGAL_SHIM}\""
+else
+  CGAL_SHIM_FLAGS=""
+fi
+
 # --- Link closure: ceres (+ transitive suitesparse), glog, gmp, mpfr ---------
 # METIS is an OPTIONAL part of the suitesparse closure: msys2/rtools45 build
 # ceres and suitesparse WITHOUT it and the ucrt64 repo ships no libmetis,
@@ -243,8 +374,8 @@ fi
 SYSTEM_LIBS="-lopengl32 -lglu32 -lws2_32 -liphlpapi -lpsapi -ldbghelp -luser32 -lgdi32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -lkernel32"
 
 cat > src/Makevars.win <<EOF
-# Generated by configure.win (tarball-static-v9.1) -- do not edit.
-PKG_CPPFLAGS = -isystem ${VTK_INCDIR} -I${FOUND_INC} ${EXTRA_CPPFLAGS} ${EXPORT_FLAGS} -DCGAL_NDEBUG
+# Generated by configure.win (tarball-static-v9.2) -- do not edit.
+PKG_CPPFLAGS = ${CGAL_SHIM_FLAGS} -isystem ${VTK_INCDIR} -I${FOUND_INC} ${EXTRA_CPPFLAGS} ${EXPORT_FLAGS} -DCGAL_NDEBUG
 PKG_LIBS = -Wl,--exclude-libs,ALL -Wl,--start-group ${VESPA_LIBS} ${VTK_ARCHIVES} -Wl,--end-group -L${UCRT}/lib ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${SYSTEM_LIBS}
 EOF
 
