@@ -1,5 +1,6 @@
 #include "converters.h"
 
+#include <vtkOutputWindow.h>
 #include <vtkCallbackCommand.h>
 #include <vtkCellArray.h>
 #include <vtkCommand.h>
@@ -252,6 +253,35 @@ unsigned long vespa::install_warning_observer(vtkObject* obj, VtkWarnings& ctx) 
 void vespa::emit_vtk_warnings(const VtkWarnings& w) {
     for (const auto& msg : w.messages)
         Rcpp::warning(msg);
+}
+
+// Do-nothing output window — swallows all VTK text/error/warning output.
+namespace {
+class VtkNullWindow : public vtkOutputWindow {
+public:
+    static VtkNullWindow* New();
+    vtkTypeMacro(VtkNullWindow, vtkOutputWindow);
+    void DisplayText(const char*) override {}
+    void DisplayErrorText(const char*) override {}
+    void DisplayWarningText(const char*) override {}
+    void DisplayGenericWarningText(const char*) override {}
+    void DisplayDebugText(const char*) override {}
+};
+vtkStandardNewMacro(VtkNullWindow);
+} // namespace
+
+vespa::VtkQuietOutput::VtkQuietOutput()
+    : prev_win_(vtkOutputWindow::GetInstance()),
+      prev_log_(vtkLogger::GetCurrentVerbosityCutoff())
+{
+    vtkNew<VtkNullWindow> w;
+    vtkOutputWindow::SetInstance(w);
+    vtkLogger::SetStderrVerbosity(vtkLogger::VERBOSITY_OFF);
+}
+
+vespa::VtkQuietOutput::~VtkQuietOutput() {
+    vtkOutputWindow::SetInstance(prev_win_);
+    vtkLogger::SetStderrVerbosity(prev_log_);
 }
 
 // Round-trip test helper

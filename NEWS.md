@@ -9,6 +9,7 @@
   own objects. `configure.win` now generates a console-output shim forwarding
   those messages to `REprintf()` (R API) and dropping the `abort()`/`exit()`
   branches so violations fall through to the existing `throw` path.
+* Improve information messages out of `mesh_check()` function
 
 # vespa 0.5.0
 

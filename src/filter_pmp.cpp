@@ -143,8 +143,9 @@ Rcpp::List rcpp_mesh_check(
     filter->SetCheckIntersect(check_intersect);
     filter->SetAttemptRepair(attempt_repair);
 
-    vespa::VtkError    err;
-    vespa::VtkWarnings warn;
+    vespa::VtkError       err;
+    vespa::VtkWarnings    warn;
+    vespa::VtkQuietOutput silence;   // suppresses vtkExecutive stderr noise
     vespa::install_error_observer(filter, err);
     vespa::install_warning_observer(filter, warn);
     filter->Update();

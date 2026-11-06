@@ -4,6 +4,8 @@
 #include <vtkImageData.h>
 #include <vtkPolyData.h>
 #include <vtkSelection.h>
+#include <vtkLogger.h>
+#include <vtkOutputWindow.h>
 #include <vtkSmartPointer.h>
 
 namespace vespa {
@@ -46,5 +48,15 @@ struct VtkWarnings {
 
 unsigned long install_warning_observer(vtkObject* obj, VtkWarnings& ctx);
 void emit_vtk_warnings(const VtkWarnings& w);
+
+// RAII guard: replaces the global vtkOutputWindow with a silent one for its
+// lifetime, then restores the original.  Use to suppress pipeline-level stderr
+// noise (vtkExecutive "returned failure" messages) around filter->Update().
+struct VtkQuietOutput {
+    vtkSmartPointer<vtkOutputWindow> prev_win_;
+    vtkLogger::Verbosity             prev_log_;
+    VtkQuietOutput();
+    ~VtkQuietOutput();
+};
 
 } // namespace vespa
