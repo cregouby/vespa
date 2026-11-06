@@ -71,7 +71,7 @@ Now it is time to see the result :
 ``` r
 
 mfrow3d(1, 3)
-shade3d(dragon, color = "lightblue")
+shade3d(extract_isosurface(dragon_sdf, isovalue = 0), color = "lightblue")
 title3d(main = "a) Original mesh")
 rgl::next3d()
 shade3d(dragon_thick, color = "lightgreen")

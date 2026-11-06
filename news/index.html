@@ -41,6 +41,7 @@
 <li>Add CI/CD workflows relying on exposed VTK 9.7 / 9.6 / 9.5 builds (<a href="https://github.com/cregouby/vespa/issues/1" class="external-link">#1</a>)</li>
 <li>add 2 vignettes to website</li>
 <li>Fix Windows R CMD check “compiled code” warning: under header-only CGAL 6.x (rtools45/msys2), the CGAL assertion handler and CORE number-type headers emit <code>std::cerr</code>/<code>std::cout</code>/<code>abort</code>/<code>exit</code> references into the package’s own objects. <code>configure.win</code> now generates a console-output shim forwarding those messages to <code>REprintf()</code> (R API) and dropping the <code>abort()</code>/<code>exit()</code> branches so violations fall through to the existing <code>throw</code> path.</li>
+<li>Improve information messages out of <code><a href="../reference/mesh_check.html">mesh_check()</a></code> function</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.0" id="vespa-050">vespa 0.5.0<a class="anchor" aria-label="anchor" href="#vespa-050"></a></h2>
