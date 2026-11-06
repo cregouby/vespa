@@ -24,12 +24,11 @@ volume. Default \code{TRUE}.}
 (fill holes, re-orient faces, remove self-intersections). Default \code{FALSE}.}
 }
 \value{
-A \code{mesh3d} object — identical to the input unless \code{attempt_repair = TRUE} and repairs were applied. R warnings are emitted for each issue
-detected.
+A \code{mesh3d} object — identical to the input unless \code{attempt_repair = TRUE} and repairs were applied.
 }
 \description{
 Checks a mesh for watertightness and self-intersections using CGAL's
-polygon mesh processing algorithms. Issues are reported as R warnings.
+polygon mesh processing algorithms. Issues are reported via \code{cli} messages.
 When \code{attempt_repair = TRUE}, Vespa attempts to fix detected problems and
 returns the repaired mesh.
 }
