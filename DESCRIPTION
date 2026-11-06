@@ -2,7 +2,9 @@ Package: vespa
 Title: Mesh Transformations Using 'Vespa' 'VTK/CGAL' Mesh Processing Library
 Version: 0.5.0
 Authors@R: person("Christophe", "Regouby", role = c("aut", "cph", "cre"), email = "christophe.regouby@free.fr")
-Description: Provides R wrappers for all 'Vespa' filters (isotropic re-meshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, and more) via direct 'Rcpp' bindings to the 'Vespa C++' 'VTK/CGAL' library.
+Description: Provides R wrappers for all 'Vespa' 3D mesh filters (isotropic re-meshing, boolean operations, alpha wrapping,
+            surface reconstruction, point set processing, as-rigid-as-possible deformation and more) via direct 'Rcpp' bindings
+            to the 'Vespa C++' 'VTK/CGAL' library. Also includes a very fast 'STL' and 'VTP' file reader.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -12,13 +14,13 @@ Imports:
     Rcpp,
     rlang,
     sf
-Suggests: 
+Suggests:
     knitr,
     rgl,
     rmarkdown,
     testthat (>= 3.0.0),
     tictoc
-LinkingTo: 
+LinkingTo:
     Rcpp
 Config/testthat/edition: 3
 VignetteBuilder: knitr

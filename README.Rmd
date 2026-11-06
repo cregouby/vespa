@@ -7,8 +7,8 @@ output: github_document
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment  = "#>",
-  eval     = FALSE
+  comment = "#>",
+  eval = FALSE
 )
 ```
 
@@ -33,44 +33,57 @@ algorithms as R functions operating on `mesh3d` objects (package
 
 ```{r isotropic-remeshing}
 library(vespa)
-mesh   <- read_stl(system.file("extdata", "torus.stl", package = "vespa"))
+mesh <- read_stl(system.file("extdata", "torus.stl", package = "vespa"))
 remesh <- isotropic_remeshing(mesh, target_length = 0.1, n_iterations = 3L)
 rgl::shade3d(remesh, col = "steelblue")
 ```
 
-<img src="man/figures/example1_1.png" width="230" />
-<img src="man/figures/example1_2.png" width="230" />
+*Surface reconstruction from a point cloud*
 
-*Surface reconstruction from a point cloud (input cloud / reconstructed mesh)*
+<table>
+<tr>
+<td align="center"><img src="man/figures/example1_1.png" width="230" /><br/><em>input cloud</em></td>
+<td align="center"><img src="man/figures/example1_2.png" width="230" /><br/><em>reconstructed mesh</em></td>
+</tr>
+</table>
 
 ```{r surface-reconstruction}
 library(vespa)
-pts   <- read_points_xyz(system.file("testdata", "test_points.xyz",
-                                     package = "vespa"))
-pts   <- pca_estimate_normals(pts, n_neighbors = 18L, orient = TRUE)
+pts <- read_points_xyz(system.file(
+  "testdata",
+  "test_points.xyz",
+  package = "vespa"
+))
+pts <- pca_estimate_normals(pts, n_neighbors = 18L, orient = TRUE)
 recon <- poisson_reconstruction(pts)
 rgl::shade3d(recon, col = "tomato")
 ```
 
-<img src="man/figures/example2_1.png" width="230" />
-<img src="man/figures/example2_2.png" width="230" />
+*As-Rigid-As-Possible mesh deformation*
 
-*As-Rigid-As-Possible mesh deformation (original / deformed)*
+<table>
+<tr>
+<td align="center"><img src="man/figures/example2_1.png" width="230" /><br/><em>original</em></td>
+<td align="center"><img src="man/figures/example2_2.png" width="230" /><br/><em>deformed</em></td>
+</tr>
+</table>
 
 ```{r mesh-deformation}
 library(vespa)
 mesh <- read_stl(system.file("extdata", "torus.stl", package = "vespa"))
 
-n        <- ncol(mesh$vb)
-fixed    <- which(mesh$vb[3, ] < -0.25)          # bottom ring — fixed handles
-moved    <- which(mesh$vb[3, ] >  0.25)           # top ring    — pulled up
-target   <- mesh$vb[1:3, moved, drop = FALSE]
-target[3, ] <- target[3, ] + 0.4                  # translate +0.4 along Z
+n <- ncol(mesh$vb)
+fixed <- which(mesh$vb[3, ] < -0.25) # bottom ring — fixed handles
+moved <- which(mesh$vb[3, ] > 0.25) # top ring    — pulled up
+target <- mesh$vb[1:3, moved, drop = FALSE]
+target[3, ] <- target[3, ] + 0.4 # translate +0.4 along Z
 
-deformed <- mesh_deformation(mesh,
-                             control_ids   = c(fixed, moved),
-                             target_coords = cbind(mesh$vb[1:3, fixed], target),
-                             roi_ids       = seq_len(n))
+deformed <- mesh_deformation(
+  mesh,
+  control_ids = c(fixed, moved),
+  target_coords = cbind(mesh$vb[1:3, fixed], target),
+  roi_ids = seq_len(n)
+)
 rgl::shade3d(deformed, col = "goldenrod")
 ```
 
@@ -78,7 +91,8 @@ rgl::shade3d(deformed, col = "goldenrod")
 
 ### Prerequisites
 
-The VESPA library requires VTK >= 9.0 and CGAL >= 5.3. and Ceres. You must install them with your software package manager.
+The VESPA library requires CGAL >= 5.3. and Ceres. You must install them with your software package manager.<br>
+For VTK >=9.1, {vespa} will download a pre-build version if not found on your local machine.
 
 ### R package installation
 
@@ -89,16 +103,19 @@ pak::pak("cregouby/vespa")
 
 ## Installation (local development version)
 
+<details>
+  <summary>Click for detailed installation procedure</summary><p>
+
 ### C++ package installation
 
 Installation of VESPA C++ library shall follow [Vespa Installation Documentation](https://gitlab.kitware.com/vtk/meshing/vespa#vespa).
-We will rely on VESPA being installed in the path `CMAKE_INSTALL_PREFIX` environemnt variable 
+We will rely on VESPA being installed in the path `CMAKE_INSTALL_PREFIX` environemnt variable
 
-As soon as VESPA installation path is in the environemnt variable `CMAKE_INSTALL_PREFIX`, then we can provide it to the installation script : 
+As soon as VESPA installation path is in the environemnt variable `CMAKE_INSTALL_PREFIX`, then we can provide it to the installation script :
 
 ### R package installation step by step
 
-```shell
+```sh
 git clone git@github.com:cregouby/vespa.git
 cd vespa
 export VESPA_ROOT=$CMAKE_INSTALL_PREFIX
@@ -121,12 +138,22 @@ CGAL_INC=/opt/homebrew/include \
 ./configure
 ```
 
+</p></details>
+
 ## Usage notes
 
-All filters expect a triangulated, watertight, 2-manifold surface
-represented as a `mesh3d` object. Use `mesh_check()` to diagnose
-topological issues and `alpha_wrapping()` to repair a mesh that is not
-watertight or 2-manifold.
+::: {.callout-tip}
+
+All {vespa} filters expect a <br>
+ - **triangulated**,<br>
+ - **watertight**,<br>
+ - **2-manifold** surface represented as a `mesh3d` object.
+
+Use `mesh_check()` to diagnose topological issues and potentially fix watertight issues.<br>
+Use `alpha_wrapping()` to repair a mesh that is not watertight or 2-manifold.
+
+:::
+
 
 ## License
 
