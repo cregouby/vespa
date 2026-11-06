@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Mesh Transformations Using Vespa VTK/CGAL Mesh Processing Library">
-<meta name="description" content="Provides R wrappers for all Vespa filters (isotropic re-meshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, and more) via direct Rcpp bindings to the Vespa C++ VTK/CGAL library.">
-<meta property="og:description" content="Provides R wrappers for all Vespa filters (isotropic re-meshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, and more) via direct Rcpp bindings to the Vespa C++ VTK/CGAL library.">
+<meta name="description" content="Provides R wrappers for all Vespa 3D mesh filters (isotropic re-meshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, as-rigid-as-possible deformation and more) via direct Rcpp bindings to the Vespa C++ VTK/CGAL library. Also includes a very fast STL and VTP file reader.">
+<meta property="og:description" content="Provides R wrappers for all Vespa 3D mesh filters (isotropic re-meshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, as-rigid-as-possible deformation and more) via direct Rcpp bindings to the Vespa C++ VTK/CGAL library. Also includes a very fast STL and VTP file reader.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -60,34 +60,53 @@
 <p><em>Isotropic remeshing of a surface mesh</em></p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://cregouby.github.io/vespa/">vespa</a></span><span class="op">)</span></span>
-<span><span class="va">mesh</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_stl.html">read_stl</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"torus.stl"</span>, package <span class="op">=</span> <span class="st">"vespa"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">mesh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_stl.html">read_stl</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"torus.stl"</span>, package <span class="op">=</span> <span class="st">"vespa"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">remesh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/isotropic_remeshing.html">isotropic_remeshing</a></span><span class="op">(</span><span class="va">mesh</span>, target_length <span class="op">=</span> <span class="fl">0.1</span>, n_iterations <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
 <span><span class="fu">rgl</span><span class="fu">::</span><span class="fu"><a href="https://dmurdoch.github.io/rgl/dev/reference/shade3d.html" class="external-link">shade3d</a></span><span class="op">(</span><span class="va">remesh</span>, col <span class="op">=</span> <span class="st">"steelblue"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/example1_1.png" width="230"><img src="reference/figures/example1_2.png" width="230"></p>
-<p><em>Surface reconstruction from a point cloud (input cloud / reconstructed mesh)</em></p>
+<p><em>Surface reconstruction from a point cloud</em></p>
+<table class="table"><tr>
+<td align="center">
+<img src="reference/figures/example1_1.png" width="230"><br><em>input cloud</em>
+</td>
+<td align="center">
+<img src="reference/figures/example1_2.png" width="230"><br><em>reconstructed mesh</em>
+</td>
+</tr></table>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://cregouby.github.io/vespa/">vespa</a></span><span class="op">)</span></span>
-<span><span class="va">pts</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_points_xyz.html">read_points_xyz</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"testdata"</span>, <span class="st">"test_points.xyz"</span>,</span>
-<span>                                     package <span class="op">=</span> <span class="st">"vespa"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">pts</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/pca_estimate_normals.html">pca_estimate_normals</a></span><span class="op">(</span><span class="va">pts</span>, n_neighbors <span class="op">=</span> <span class="fl">18L</span>, orient <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">pts</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_points_xyz.html">read_points_xyz</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span></span>
+<span>  <span class="st">"testdata"</span>,</span>
+<span>  <span class="st">"test_points.xyz"</span>,</span>
+<span>  package <span class="op">=</span> <span class="st">"vespa"</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">pts</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/pca_estimate_normals.html">pca_estimate_normals</a></span><span class="op">(</span><span class="va">pts</span>, n_neighbors <span class="op">=</span> <span class="fl">18L</span>, orient <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">recon</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/poisson_reconstruction.html">poisson_reconstruction</a></span><span class="op">(</span><span class="va">pts</span><span class="op">)</span></span>
 <span><span class="fu">rgl</span><span class="fu">::</span><span class="fu"><a href="https://dmurdoch.github.io/rgl/dev/reference/shade3d.html" class="external-link">shade3d</a></span><span class="op">(</span><span class="va">recon</span>, col <span class="op">=</span> <span class="st">"tomato"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/example2_1.png" width="230"><img src="reference/figures/example2_2.png" width="230"></p>
-<p><em>As-Rigid-As-Possible mesh deformation (original / deformed)</em></p>
+<p><em>As-Rigid-As-Possible mesh deformation</em></p>
+<table class="table"><tr>
+<td align="center">
+<img src="reference/figures/example2_1.png" width="230"><br><em>original</em>
+</td>
+<td align="center">
+<img src="reference/figures/example2_2.png" width="230"><br><em>deformed</em>
+</td>
+</tr></table>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://cregouby.github.io/vespa/">vespa</a></span><span class="op">)</span></span>
 <span><span class="va">mesh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_stl.html">read_stl</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"torus.stl"</span>, package <span class="op">=</span> <span class="st">"vespa"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">n</span>        <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">)</span></span>
-<span><span class="va">fixed</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">[</span><span class="fl">3</span>, <span class="op">]</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">0.25</span><span class="op">)</span>          <span class="co"># bottom ring — fixed handles</span></span>
-<span><span class="va">moved</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">[</span><span class="fl">3</span>, <span class="op">]</span> <span class="op">&gt;</span>  <span class="fl">0.25</span><span class="op">)</span>           <span class="co"># top ring    — pulled up</span></span>
-<span><span class="va">target</span>   <span class="op">&lt;-</span> <span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="va">moved</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
-<span><span class="va">target</span><span class="op">[</span><span class="fl">3</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="va">target</span><span class="op">[</span><span class="fl">3</span>, <span class="op">]</span> <span class="op">+</span> <span class="fl">0.4</span>                  <span class="co"># translate +0.4 along Z</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">)</span></span>
+<span><span class="va">fixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">[</span><span class="fl">3</span>, <span class="op">]</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">0.25</span><span class="op">)</span> <span class="co"># bottom ring — fixed handles</span></span>
+<span><span class="va">moved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">[</span><span class="fl">3</span>, <span class="op">]</span> <span class="op">&gt;</span> <span class="fl">0.25</span><span class="op">)</span> <span class="co"># top ring    — pulled up</span></span>
+<span><span class="va">target</span> <span class="op">&lt;-</span> <span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="va">moved</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
+<span><span class="va">target</span><span class="op">[</span><span class="fl">3</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="va">target</span><span class="op">[</span><span class="fl">3</span>, <span class="op">]</span> <span class="op">+</span> <span class="fl">0.4</span> <span class="co"># translate +0.4 along Z</span></span>
 <span></span>
-<span><span class="va">deformed</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/mesh_deformation.html">mesh_deformation</a></span><span class="op">(</span><span class="va">mesh</span>,</span>
-<span>                             control_ids   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fixed</span>, <span class="va">moved</span><span class="op">)</span>,</span>
-<span>                             target_coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="va">fixed</span><span class="op">]</span>, <span class="va">target</span><span class="op">)</span>,</span>
-<span>                             roi_ids       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">deformed</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/mesh_deformation.html">mesh_deformation</a></span><span class="op">(</span></span>
+<span>  <span class="va">mesh</span>,</span>
+<span>  control_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fixed</span>, <span class="va">moved</span><span class="op">)</span>,</span>
+<span>  target_coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">mesh</span><span class="op">$</span><span class="va">vb</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="va">fixed</span><span class="op">]</span>, <span class="va">target</span><span class="op">)</span>,</span>
+<span>  roi_ids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span><span class="fu">rgl</span><span class="fu">::</span><span class="fu"><a href="https://dmurdoch.github.io/rgl/dev/reference/shade3d.html" class="external-link">shade3d</a></span><span class="op">(</span><span class="va">deformed</span>, col <span class="op">=</span> <span class="st">"goldenrod"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -95,7 +114,7 @@
 <div class="section level3">
 <h3 id="prerequisites">Prerequisites<a class="anchor" aria-label="anchor" href="#prerequisites"></a>
 </h3>
-<p>The VESPA library requires VTK &gt;= 9.0 and CGAL &gt;= 5.3. and Ceres. You must install them with your software package manager.</p>
+<p>The VESPA library requires CGAL &gt;= 5.3. and Ceres. You must install them with your software package manager.<br> For VTK &gt;=9.1, {vespa} will download a pre-build version if not found on your local machine.</p>
 </div>
 <div class="section level3">
 <h3 id="r-package-installation">R package installation<a class="anchor" aria-label="anchor" href="#r-package-installation"></a>
@@ -108,6 +127,10 @@
 <div class="section level2">
 <h2 id="installation-local-development-version">Installation (local development version)<a class="anchor" aria-label="anchor" href="#installation-local-development-version"></a>
 </h2>
+<details><summary>
+Click for detailed installation procedure
+</summary><p>
+</p>
 <div class="section level3">
 <h3 id="c-package-installation">C++ package installation<a class="anchor" aria-label="anchor" href="#c-package-installation"></a>
 </h3>
@@ -117,10 +140,10 @@
 <div class="section level3">
 <h3 id="r-package-installation-step-by-step">R package installation step by step<a class="anchor" aria-label="anchor" href="#r-package-installation-step-by-step"></a>
 </h3>
-<pre class="shell"><code>git clone git@github.com:cregouby/vespa.git
-cd vespa
-export VESPA_ROOT=$CMAKE_INSTALL_PREFIX
-R CMD INSTALL .</code></pre>
+<div class="sourceCode" id="cb5"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">git</span> clone git@github.com:cregouby/vespa.git</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="bu">cd</span> vespa</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="bu">export</span> <span class="va">VESPA_ROOT</span><span class="op">=</span><span class="va">$CMAKE_INSTALL_PREFIX</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="ex">R</span> CMD INSTALL .</span></code></pre></div>
 <p>Run the <code>configure</code> script once before building so that <code>src/Makevars</code> is generated:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="ex">./configure</span></span></code></pre></div>
 <p>Override auto-detected paths if needed:</p>
@@ -128,12 +151,18 @@ R CMD INSTALL .</code></pre>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="va">VTK_DIR</span><span class="op">=</span>/usr/local/lib/cmake/vtk-9.5 <span class="dt">\</span></span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="va">CGAL_INC</span><span class="op">=</span>/opt/homebrew/include <span class="dt">\</span></span>
 <span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="ex">./configure</span></span></code></pre></div>
+
+
 </div>
+</details>
 </div>
 <div class="section level2">
 <h2 id="usage-notes">Usage notes<a class="anchor" aria-label="anchor" href="#usage-notes"></a>
 </h2>
-<p>All filters expect a triangulated, watertight, 2-manifold surface represented as a <code>mesh3d</code> object. Use <code><a href="reference/mesh_check.html">mesh_check()</a></code> to diagnose topological issues and <code><a href="reference/alpha_wrapping.html">alpha_wrapping()</a></code> to repair a mesh that is not watertight or 2-manifold.</p>
+<div class="callout-tip">
+<p>All {vespa} filters expect a <br> - <strong>triangulated</strong>,<br> - <strong>watertight</strong>,<br> - <strong>2-manifold</strong> surface represented as a <code>mesh3d</code> object.</p>
+<p>Use <code><a href="reference/mesh_check.html">mesh_check()</a></code> to diagnose topological issues and potentially fix watertight issues.<br> Use <code><a href="reference/alpha_wrapping.html">alpha_wrapping()</a></code> to repair a mesh that is not watertight or 2-manifold.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>

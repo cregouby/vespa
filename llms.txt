@@ -13,45 +13,49 @@ algorithms as R functions operating on `mesh3d` objects (package
 ``` r
 
 library(vespa)
-mesh   <- read_stl(system.file("extdata", "torus.stl", package = "vespa"))
+mesh <- read_stl(system.file("extdata", "torus.stl", package = "vespa"))
 remesh <- isotropic_remeshing(mesh, target_length = 0.1, n_iterations = 3L)
 rgl::shade3d(remesh, col = "steelblue")
 ```
 
-![](reference/figures/example1_1.png)![](reference/figures/example1_2.png)
+*Surface reconstruction from a point cloud*
 
-*Surface reconstruction from a point cloud (input cloud / reconstructed
-mesh)*
+[TABLE]
 
 ``` r
 
 library(vespa)
-pts   <- read_points_xyz(system.file("testdata", "test_points.xyz",
-                                     package = "vespa"))
-pts   <- pca_estimate_normals(pts, n_neighbors = 18L, orient = TRUE)
+pts <- read_points_xyz(system.file(
+  "testdata",
+  "test_points.xyz",
+  package = "vespa"
+))
+pts <- pca_estimate_normals(pts, n_neighbors = 18L, orient = TRUE)
 recon <- poisson_reconstruction(pts)
 rgl::shade3d(recon, col = "tomato")
 ```
 
-![](reference/figures/example2_1.png)![](reference/figures/example2_2.png)
+*As-Rigid-As-Possible mesh deformation*
 
-*As-Rigid-As-Possible mesh deformation (original / deformed)*
+[TABLE]
 
 ``` r
 
 library(vespa)
 mesh <- read_stl(system.file("extdata", "torus.stl", package = "vespa"))
 
-n        <- ncol(mesh$vb)
-fixed    <- which(mesh$vb[3, ] < -0.25)          # bottom ring — fixed handles
-moved    <- which(mesh$vb[3, ] >  0.25)           # top ring    — pulled up
-target   <- mesh$vb[1:3, moved, drop = FALSE]
-target[3, ] <- target[3, ] + 0.4                  # translate +0.4 along Z
+n <- ncol(mesh$vb)
+fixed <- which(mesh$vb[3, ] < -0.25) # bottom ring — fixed handles
+moved <- which(mesh$vb[3, ] > 0.25) # top ring    — pulled up
+target <- mesh$vb[1:3, moved, drop = FALSE]
+target[3, ] <- target[3, ] + 0.4 # translate +0.4 along Z
 
-deformed <- mesh_deformation(mesh,
-                             control_ids   = c(fixed, moved),
-                             target_coords = cbind(mesh$vb[1:3, fixed], target),
-                             roi_ids       = seq_len(n))
+deformed <- mesh_deformation(
+  mesh,
+  control_ids = c(fixed, moved),
+  target_coords = cbind(mesh$vb[1:3, fixed], target),
+  roi_ids = seq_len(n)
+)
 rgl::shade3d(deformed, col = "goldenrod")
 ```
 
@@ -59,8 +63,10 @@ rgl::shade3d(deformed, col = "goldenrod")
 
 ### Prerequisites
 
-The VESPA library requires VTK \>= 9.0 and CGAL \>= 5.3. and Ceres. You
-must install them with your software package manager.
+The VESPA library requires CGAL \>= 5.3. and Ceres. You must install
+them with your software package manager.  
+For VTK \>=9.1, {vespa} will download a pre-build version if not found
+on your local machine.
 
 ### R package installation
 
@@ -71,6 +77,8 @@ pak::pak("cregouby/vespa")
 ```
 
 ## Installation (local development version)
+
+Click for detailed installation procedure
 
 ### C++ package installation
 
@@ -85,7 +93,7 @@ script :
 
 ### R package installation step by step
 
-``` shell
+``` sh
 git clone git@github.com:cregouby/vespa.git
 cd vespa
 export VESPA_ROOT=$CMAKE_INSTALL_PREFIX
@@ -110,10 +118,15 @@ CGAL_INC=/opt/homebrew/include \
 
 ## Usage notes
 
-All filters expect a triangulated, watertight, 2-manifold surface
-represented as a `mesh3d` object. Use
+All {vespa} filters expect a  
+- **triangulated**,  
+- **watertight**,  
+- **2-manifold** surface represented as a `mesh3d` object.
+
+Use
 [`mesh_check()`](https://cregouby.github.io/vespa/reference/mesh_check.md)
-to diagnose topological issues and
+to diagnose topological issues and potentially fix watertight issues.  
+Use
 [`alpha_wrapping()`](https://cregouby.github.io/vespa/reference/alpha_wrapping.md)
 to repair a mesh that is not watertight or 2-manifold.
 

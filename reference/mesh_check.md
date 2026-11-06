@@ -1,9 +1,9 @@
 # Validate and optionally repair a triangular surface mesh
 
 Checks a mesh for watertightness and self-intersections using CGAL's
-polygon mesh processing algorithms. Issues are reported as R warnings.
-When `attempt_repair = TRUE`, Vespa attempts to fix detected problems
-and returns the repaired mesh.
+polygon mesh processing algorithms. Issues are reported via `cli`
+messages. When `attempt_repair = TRUE`, Vespa attempts to fix detected
+problems and returns the repaired mesh.
 
 ## Usage
 
@@ -39,8 +39,7 @@ mesh_check(
 ## Value
 
 A `mesh3d` object — identical to the input unless
-`attempt_repair = TRUE` and repairs were applied. R warnings are emitted
-for each issue detected.
+`attempt_repair = TRUE` and repairs were applied.
 
 ## See also
 
