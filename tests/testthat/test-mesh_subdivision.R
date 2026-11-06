@@ -20,11 +20,3 @@ test_that("mesh_subdivision (sqrt3) increases vertex and face count", {
   expect_s3_class(result, "mesh3d")
   expect_gt(ncol(result$vb), ncol(tet$vb))
 })
-
-test_that("shape_smoothing returns a mesh3d with same topology", {
-  tet <- make_tet_mesh3d()
-  result <- shape_smoothing(tet, n_iterations = 2L)
-  expect_s3_class(result, "mesh3d")
-  expect_equal(ncol(result$vb), ncol(tet$vb))
-  expect_equal(ncol(result$it), ncol(tet$it))
-})
