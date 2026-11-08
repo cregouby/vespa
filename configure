@@ -1,7 +1,7 @@
 #!/bin/sh
 # configure -- Unix/macOS configuration for the vespa R package.
 # Revision: tarball-static-v9.1
-# v9.1 changelog (2026-10-25, CI fix, 3 OS):
+# v9.1 :
 #  - v9 introduced the libvtk* archive version filter (stale mixed-version
 #    bundles must never enter the link line) but VTK_MINOR was only set in
 #    the "downloaded" branch. With VTK_ROOT (workflow prebuilt prefix) it
@@ -15,7 +15,7 @@
 #    -lmetis while ucrt64/lib ships no metis archive: -lmetis is now
 #    stripped from CERES_LIBS whenever the archive is absent, whichever
 #    code path produced it (pkg-config or the manual suitesparse closure).
-# v8 changelog (2026-10-25, segfault root cause closed):
+# v8 :
 #  - v7 attempted -Wl,--exclude-libs,ALL: it only makes symbols coming FROM
 #    STATIC ARCHIVES local. The Rcpp/vtkCGAL wrapper objects also DEFINE
 #    exported VTK symbols (template instantiations, inlined functions,
@@ -32,8 +32,8 @@
 #    dynamic visibility. Linux: -Wl,--version-script (GNU ld/lld/gold);
 #    macOS: -Wl,-exported_symbols_list; Windows: PE has no flat namespace,
 #    nothing to do (configure.win keeps --exclude-libs,ALL as hygiene).
-# v6 changelog (2026-10-24):
-#  - FIX 2026-10-24 (real local R CMD check, Ubuntu/GCC 13): the header
+# v6 :
+#  - FIX (real local R CMD check, Ubuntu/GCC 13): the header
 #    marker vtkCGALAlgorithm.h does NOT exist in the Kitware vespa install
 #    layout. The superbuild installs FLAT headers -- vtkCGALPolyDataAlgorithm.h
 #    (base class of every filter), vtkCGALHelper.h -- plus per-module headers
@@ -369,7 +369,7 @@ auto_build_vespa() {
     return 1
   fi
 
-  VESPA_GIT_TAG="v1.0"
+  VESPA_GIT_TAG="v1.1"
   VERSION_FILE="${PKG_SRC}/.github/vespa-version.txt"
   if [ -f "$VERSION_FILE" ]; then
     VESPA_GIT_TAG="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
