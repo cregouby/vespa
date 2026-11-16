@@ -14,9 +14,9 @@ navbar:
     text: Examples
     menu:
       - text: Poisson reconstruction
-        href: poisson_reco.html
+        href: articles/poisson_reco.html
       - text: Signed-distance-function usage
-        href: signed_distance_function.html
+        href: articles/signed_distance_function.html
   
 reference:
 - title: Mesh Transformations
