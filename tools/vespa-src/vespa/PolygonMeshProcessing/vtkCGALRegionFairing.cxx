@@ -4,13 +4,11 @@
 #include "vtkCGALHelper.h"
 
 // VTK related includes
-#include <vtkExtractSelection.h>
+#include "vtkCGALSelectionHelper.h"
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
-#include <vtkPointData.h>
 #include <vtkSelection.h>
-#include <vtkSelectionNode.h>
 
 // CGAL related includes
 #include <CGAL/Polygon_mesh_processing/fair.h>
@@ -74,12 +72,8 @@ int vtkCGALRegionFairing::RequestData(
     return 1;
   }
   vtkSelection* inputSel = vtkSelection::SafeDownCast(selInfo->Get(vtkDataObject::DATA_OBJECT()));
-  vtkNew<vtkExtractSelection> extractSelection;
-  extractSelection->SetInputData(0, input);
-  extractSelection->SetInputData(1, inputSel);
-  extractSelection->Update();
-  vtkPointSet* dataSel = vtkPointSet::SafeDownCast(extractSelection->GetOutputDataObject(0));
-  if (!dataSel || dataSel->GetNumberOfPoints() == 0)
+  const std::vector<vtkIdType> sel = vtkCGALSelectedPointIds(inputSel);
+  if (sel.empty())
   {
     vtkErrorMacro("Not a valid selection, need points.");
     output->ShallowCopy(input);
@@ -95,8 +89,10 @@ int vtkCGALRegionFairing::RequestData(
 
   // Retrieve the region to fair (ROI)
   // ---------------------------------
-  auto gids = vtk::DataArrayValueRange(dataSel->GetPointData()->GetArray("vtkOriginalPointIds"));
-  std::vector<Graph_Verts> sel(gids.cbegin(), gids.cend());
+  std::vector<Graph_Verts> vertices;
+  vertices.reserve(sel.size());
+  for (vtkIdType id : sel)
+    vertices.push_back(static_cast<Graph_Verts>(id));
 
   // CGAL Processing
   // ---------------
@@ -104,7 +100,7 @@ int vtkCGALRegionFairing::RequestData(
   try
   {
     // fair selected area
-    pmp::fair(cgalMesh->surface, sel);
+    pmp::fair(cgalMesh->surface, vertices);
   }
   catch (std::exception& e)
   {

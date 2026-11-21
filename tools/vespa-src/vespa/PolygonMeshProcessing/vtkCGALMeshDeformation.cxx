@@ -4,7 +4,7 @@
 #include "vtkCGALHelper.h"
 
 // VTK related includes
-#include <vtkExtractSelection.h>
+#include "vtkCGALSelectionHelper.h"
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
@@ -89,8 +89,8 @@ int vtkCGALMeshDeformation::RequestData(
   }
 
   // Get the optional selection input
-  vtkInformation*     selInfo = inputVector[2]->GetInformationObject(0);
-  vtkNew<vtkPointSet> roi;
+  vtkInformation* selInfo = inputVector[2]->GetInformationObject(0);
+  std::vector<vtkIdType> roiIds;
 
   // If no selection is given, use control points as ROI
   // A better approach could use all points within a radius
@@ -98,21 +98,13 @@ int vtkCGALMeshDeformation::RequestData(
   if (selInfo)
   {
     vtkSelection* roiSel = vtkSelection::SafeDownCast(selInfo->Get(vtkDataObject::DATA_OBJECT()));
-    vtkNew<vtkExtractSelection> extractSelection;
-    extractSelection->SetInputData(0, input);
-    extractSelection->SetInputData(1, roiSel);
-    extractSelection->Update();
-    roi->ShallowCopy(extractSelection->GetOutputDataObject(0));
-    if (!roi || roi->GetNumberOfPoints() == 0)
+    roiIds = vtkCGALSelectedPointIds(roiSel);
+    if (roiIds.empty())
     {
       vtkErrorMacro("Not a valid selection, need points.");
       output->ShallowCopy(input);
       return 0;
     }
-  }
-  else
-  {
-    roi->ShallowCopy(targets);
   }
 
   // Create the triangle mesh for CGAL
@@ -150,15 +142,27 @@ int vtkCGALMeshDeformation::RequestData(
   // Define the ROI
   // ---------------------------------
 
-  if (!roi->GetPointData()->GetArray(this->GlobalIdArray.c_str()))
+  std::vector<Graph_Verts> roiVerts;
+  if (selInfo)
   {
-    vtkErrorMacro(<< "No array named " << this->GlobalIdArray << " for the ROI!");
-    return 0;
+    vtkDataArray* roiGids = input->GetPointData()->GetArray(this->GlobalIdArray.c_str());
+    for (vtkIdType id : roiIds)
+    {
+      const vtkIdType gid = roiGids ? static_cast<vtkIdType>(roiGids->GetTuple1(id)) : id;
+      roiVerts.push_back(static_cast<Graph_Verts>(gid));
+    }
   }
-
-  auto gids =
-    vtk::DataArrayValueRange<1>(roi->GetPointData()->GetArray(this->GlobalIdArray.c_str()));
-  std::vector<Graph_Verts> roiVerts(gids.cbegin(), gids.cend());
+  else
+  {
+    vtkDataArray* roiGids = targets->GetPointData()->GetArray(this->GlobalIdArray.c_str());
+    if (!roiGids)
+    {
+      vtkErrorMacro(<< "No array named " << this->GlobalIdArray << " for the ROI!");
+      return 0;
+    }
+    for (vtkIdType i = 0; i < roiGids->GetNumberOfTuples(); ++i)
+      roiVerts.push_back(static_cast<Graph_Verts>(roiGids->GetTuple1(i)));
+  }
   try
   {
     switch (this->Mode)
@@ -186,7 +190,7 @@ int vtkCGALMeshDeformation::RequestData(
     return 0;
   }
 
-  gids =
+  auto gids =
     vtk::DataArrayValueRange<1>(targets->GetPointData()->GetArray(this->GlobalIdArray.c_str()));
   std::vector<Graph_Verts> ctrlPoints(gids.cbegin(), gids.cend());
   try

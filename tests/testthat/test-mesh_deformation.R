@@ -27,3 +27,17 @@ test_that("mesh_deformation moves a control vertex", {
   expect_s3_class(result, "mesh3d")
   expect_equal(ncol(result$vb), ncol(tet$vb))
 })
+
+test_that("mesh_deformation accepts an explicit ROI selection", {
+  tet <- make_tet_mesh3d()
+  ctrl <- 2L
+  orig <- tet$vb[1:3, ctrl]
+  result <- mesh_deformation(
+    tet,
+    control_ids = ctrl,
+    target_coords = matrix(orig + c(0.1, 0, 0), nrow = 1),
+    roi_ids = 1L
+  )
+  expect_s3_class(result, "mesh3d")
+  expect_equal(ncol(result$vb), ncol(tet$vb))
+})

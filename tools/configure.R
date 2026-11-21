@@ -11,7 +11,6 @@ vtk_modules <- c(
   "vtkFiltersGeneral",
   "vtkFiltersGeometry",
   "vtkFiltersModeling",
-  "vtkFiltersExtraction",
   "vtkCommonCore",
   "vtkCommonDataModel",
   "vtkCommonExecutionModel",

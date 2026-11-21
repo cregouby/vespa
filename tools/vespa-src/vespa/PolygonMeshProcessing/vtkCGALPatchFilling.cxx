@@ -4,15 +4,12 @@
 #include "vtkCGALHelper.h"
 
 // VTK related includes
-#include <vtkDataSetSurfaceFilter.h>
-#include <vtkExtractSelection.h>
+#include "vtkCGALSelectionHelper.h"
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
 #include <vtkSelection.h>
-#include <vtkSelectionNode.h>
 #include <vtkTriangleFilter.h>
-#include <vtkThreshold.h>
 
 // CGAL related includes
 #include <CGAL/version.h>
@@ -93,25 +90,14 @@ int vtkCGALPatchFilling::RequestData(
   if (selInfo)
   {
     vtkSelection* inputSel = vtkSelection::SafeDownCast(selInfo->Get(vtkDataObject::DATA_OBJECT()));
-    const auto    selNbNodes = inputSel->GetNumberOfNodes();
-    if (selNbNodes > 0)
+    const std::vector<vtkIdType> ids = vtkCGALSelectedPointIds(inputSel);
+    if (!ids.empty())
     {
-      // pipeline to remove selection
-      vtkNew<vtkExtractSelection> extractSelection;
-      extractSelection->SetInputData(0, baseDataSet);
-      extractSelection->SetInputData(1, inputSel);
-      extractSelection->PreserveTopologyOn();
-      vtkNew<vtkThreshold> threshold;
-      threshold->SetInputConnection(extractSelection->GetOutputPort());
-      threshold->SetInputArrayToProcess(
-        0, 0, 0, vtkDataObject::FIELD_ASSOCIATION_POINTS_THEN_CELLS, "vtkInsidedness");
-      threshold->SetUpperThreshold(0.5);
-      vtkNew<vtkDataSetSurfaceFilter> surface;
-      surface->SetInputConnection(threshold->GetOutputPort());
+      vtkSmartPointer<vtkPolyData> trimmed = vtkCGALRemovePoints(baseDataSet, ids);
       vtkNew<vtkTriangleFilter> tri;
-      tri->SetInputConnection(surface->GetOutputPort());
+      tri->SetInputData(trimmed);
       tri->Update();
-      baseDataSet->ShallowCopy(vtkPolyData::SafeDownCast(tri->GetOutput(0)));
+      baseDataSet->ShallowCopy(tri->GetOutput());
     }
   }
 
