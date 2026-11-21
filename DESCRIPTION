@@ -11,7 +11,7 @@ Description: Provides R wrappers for the 'Vespa' three-dimensional mesh filters
     smoothing, subdivision, deformation, and signed distance field extraction.
     Algorithms rely on the Computational Geometry Algorithms Library (CGAL) and
     the Visualization Toolkit (VTK).
-License: MIT + file LICENSE
+License: MIT + file LICENSE.md
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 SystemRequirements: C++17, VTK >= 9.4, CGAL >= 5.5, Ceres Solver >= 2.0,
