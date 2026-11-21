@@ -1,5 +1,10 @@
 # Changelog
 
+## vespa 0.6.1
+
+- bump VTK download to 9.7.2
+- multiple fix on hole filling
+
 ## vespa 0.6.0
 
 - Use the ‘rvtk’ package to provide VTK at install time, removing the
