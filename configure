@@ -66,33 +66,29 @@ print_install_instructions() {
   echo " ERROR: Missing system dependencies for Vespa R package"
   echo "========================================================================"
   echo ""
-  echo "This package requires CGAL, Ceres Solver, and the Vespa library."
+  echo "This package requires CGAL, Ceres Solver, and Eigen."
   echo "VTK is provided at install time by the 'rvtk' R package."
+  echo "The Vespa C++ sources are bundled with this package."
   echo ""
-  echo "1. CGAL and Ceres can be installed via your package manager:"
+  echo "1. CGAL, Ceres, and Eigen can be installed via your package manager:"
 
   if [ "$(uname)" = "Darwin" ]; then
     echo "   On macOS (using Homebrew):"
-    echo "     brew install cgal ceres-solver"
+    echo "     brew install cgal ceres-solver eigen"
   elif [ -f /etc/debian_version ] || grep -qi "ubuntu" /etc/issue; then
     echo "   On Debian / Ubuntu:"
     echo "     sudo apt-get update"
-    echo "     sudo apt-get install libcgal-dev libceres-dev"
+    echo "     sudo apt-get install libcgal-dev libceres-dev libeigen3-dev"
   elif [ -f /etc/redhat-release ] || [ -f /etc/fedora-release ]; then
     echo "   On Fedora / RHEL / CentOS:"
-    echo "     sudo dnf install CGAL-devel ceres-solver-devel"
+    echo "     sudo dnf install CGAL-devel ceres-solver-devel eigen3-devel"
   else
-    echo "   On Linux, install the development packages for CGAL and Ceres."
+    echo "   On Linux, install the development packages for CGAL, Ceres, and Eigen."
   fi
 
   echo ""
-  echo "2. Vespa is NOT distributed via standard package managers and must be"
-  echo "   built from source using CMake. Please follow the instructions at:"
-  echo "   https://gitlab.kitware.com/vtk/meshing/vespa"
-  echo ""
-  echo "   Once installed, ensure the configure script can find it by setting"
-  echo "   the VESPA_ROOT environment variable before running R CMD INSTALL:"
-  echo "     VESPA_ROOT=/path/to/vespa R CMD INSTALL ."
+  echo "2. The bundled Vespa sources are compiled automatically."
+  echo "   Advanced users can instead point VESPA_ROOT at a system installation."
   echo ""
   echo "========================================================================"
   echo ""
@@ -116,6 +112,25 @@ if [ -z "$CGAL_INC" ]; then
   exit 1
 fi
 echo ">> Checking for CGAL... OK (found in $CGAL_INC)"
+
+# --- Check for Eigen (required by CGAL and by the Vespa sources) ---
+EIGEN_CPPFLAGS=""
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists eigen3 2>/dev/null; then
+  EIGEN_CPPFLAGS=$(pkg-config --cflags eigen3)
+elif [ -f /usr/include/eigen3/Eigen/Core ]; then
+  EIGEN_CPPFLAGS="-I/usr/include/eigen3"
+elif [ -f /usr/local/include/eigen3/Eigen/Core ]; then
+  EIGEN_CPPFLAGS="-I/usr/local/include/eigen3"
+elif [ -f /opt/homebrew/include/eigen3/Eigen/Core ]; then
+  EIGEN_CPPFLAGS="-I/opt/homebrew/include/eigen3"
+fi
+
+if [ -z "$EIGEN_CPPFLAGS" ]; then
+  echo ">> Checking for Eigen... FAILED."
+  print_install_instructions
+  exit 1
+fi
+echo ">> Checking for Eigen... OK"
 
 # --- VTK is provided at install time by the rvtk package ----------------------
 # VTK compiler and linker flags are resolved lazily by make via
@@ -252,80 +267,19 @@ if [ -z "$VESPA_LIBDIR" ]; then
   fi
 fi
 
-# Priority 3: auto-build (static, against a local VTK_ROOT prefix; the
-# superbuild requires VTK_ROOT).
-auto_build_vespa() {
-  AUTOBUILD_VTK_ROOT="$1"
-  PKG_SRC="$(pwd)"
-  INST_DIR="${PKG_SRC}/inst/vespa"
-  BUILD_DIR="$(mktemp -d)"
-
-  echo ">> Vespa not found on the system."
-  echo ">> Attempting automatic build into ${INST_DIR} ..."
-
-  # Wipe any stale bundle first: leftover Windows import libraries (*.dll.a),
-  # old release zips or a partial install would poison the post-build
-  # re-check (and R CMD build would ship megabytes of junk inside inst/).
-  rm -rf "$INST_DIR"
-
-  if ! command -v cmake >/dev/null 2>&1; then
-    echo ">> cmake is required for automatic Vespa build but was not found."
-    return 1
-  fi
-  if ! command -v git >/dev/null 2>&1; then
-    echo ">> git is required for automatic Vespa build but was not found."
-    return 1
-  fi
-
-  VESPA_GIT_TAG="v1.1"
-  VERSION_FILE="${PKG_SRC}/.github/vespa-version.txt"
-  if [ -f "$VERSION_FILE" ]; then
-    VESPA_GIT_TAG="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
-  fi
-
-  echo ">> Building Vespa ${VESPA_GIT_TAG} (static, against VTK in ${AUTOBUILD_VTK_ROOT}) ..."
-  echo ">> (this may take several minutes) ..."
-
-  cmake -S "${PKG_SRC}/tools/build-vespa" \
-        -B "$BUILD_DIR" \
-        -DINSTALL_PREFIX="$INST_DIR" \
-        -DVESPA_GIT_TAG="$VESPA_GIT_TAG" \
-        -DVTK_ROOT="$AUTOBUILD_VTK_ROOT" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=OFF \
-    && cmake --build "$BUILD_DIR"
-
-  STATUS=$?
-  rm -rf "$BUILD_DIR"
-  return $STATUS
-}
-
+# Priority 3: vendored sources (always available, no network access needed).
+VESPA_VENDORED=false
 if [ -z "$VESPA_LIBDIR" ]; then
-  AUTOBUILD_VTK_ROOT=""
-  if [ -n "$VTK_ROOT" ] && [ -d "$VTK_ROOT/lib" ]; then
-    AUTOBUILD_VTK_ROOT="$VTK_ROOT"
-  fi
-  if [ -n "$AUTOBUILD_VTK_ROOT" ]; then
-    if auto_build_vespa "$AUTOBUILD_VTK_ROOT"; then
-      VESPA_SOURCE="autobuilt"
-      VESPA_ROOT="$(pwd)/inst/vespa"
-      VESPA_INC="$(vespa_include_dir "$VESPA_ROOT")"
-      if [ -d "$VESPA_ROOT/lib" ] && { has_real_archive "$VESPA_ROOT/lib" ||
-           ls "$VESPA_ROOT"/lib/libvtkCGAL*.so >/dev/null 2>&1 ||
-           ls "$VESPA_ROOT"/lib/libvtkCGAL*.dylib >/dev/null 2>&1; }; then
-        VESPA_LIBDIR="$VESPA_ROOT/lib"
-      elif [ -d "$VESPA_ROOT/lib64" ] && { has_real_archive "$VESPA_ROOT/lib64" ||
-           ls "$VESPA_ROOT"/lib64/libvtkCGAL*.so >/dev/null 2>&1 ||
-           ls "$VESPA_ROOT"/lib64/libvtkCGAL*.dylib >/dev/null 2>&1; }; then
-        VESPA_LIBDIR="$VESPA_ROOT/lib64"
-      fi
-    fi
-  else
-    echo ">> Vespa not found and no usable static VTK for the auto-build."
+  if [ -d "tools/vespa-src/vespa" ]; then
+    VESPA_SOURCE="vendored"
+    VESPA_VENDORED=true
+    VESPA_ROOT="$(pwd)/tools/vespa-src"
+    VESPA_INC=""
+    echo ">> Checking for Vespa... OK (vendored sources in tools/vespa-src)"
   fi
 fi
 
-if [ -z "$VESPA_LIBDIR" ] || [ -z "$VESPA_INC" ]; then
+if [ "$VESPA_VENDORED" = "false" ] && { [ -z "$VESPA_LIBDIR" ] || [ -z "$VESPA_INC" ]; }; then
   echo ">> Checking for Vespa... FAILED."
   echo ">> Diagnostics dump:"
   echo ">>   pwd        = $(pwd)"
@@ -352,34 +306,42 @@ if [ -z "$VESPA_LIBDIR" ] || [ -z "$VESPA_INC" ]; then
   exit 1
 fi
 
-# --- Collect Vespa libraries (static or shared) ---
-VESPA_STATIC=false
-VESPA_LIBS=""
-for f in "$VESPA_LIBDIR"/libvtkCGAL*.a; do
-  [ -e "$f" ] || continue
-  case "$f" in
-    *.dll.a) continue ;;  # Windows import library: unusable on Unix
-  esac
-  VESPA_STATIC=true
-  VESPA_LIBS="$VESPA_LIBS $f"
-done
-if [ "$VESPA_STATIC" = "true" ]; then
-  echo ">> Vespa: static libraries"
+# --- Include paths and libraries for Vespa ---
+if [ "$VESPA_VENDORED" = "true" ]; then
+  VESPA_CPPFLAGS="-I../tools/vespa-src/vespa/Algorithm -I../tools/vespa-src/vespa/Delaunay -I../tools/vespa-src/vespa/PointSetProcessing -I../tools/vespa-src/vespa/PolygonMeshProcessing -I../tools/vespa-src/vespa/ShapeReconstruction -I../tools/vespa-src/module-headers"
+  VESPA_STATIC=false
+  VESPA_LIBS=""
+  echo ">> Vespa: compiled from vendored sources"
 else
-  for f in "$VESPA_LIBDIR"/libvtkCGAL*.so "$VESPA_LIBDIR"/libvtkCGAL*.dylib; do
+  VESPA_CPPFLAGS="-I${VESPA_INC}"
+  VESPA_STATIC=false
+  VESPA_LIBS=""
+  for f in "$VESPA_LIBDIR"/libvtkCGAL*.a; do
     [ -e "$f" ] || continue
-    n="${f##*/}"
-    case "$n" in
-      *.dylib) n="${n#lib}"; n="${n%.dylib}" ;;
-      *.so)    n="${n#lib}"; n="${n%.so}" ;;
+    case "$f" in
+      *.dll.a) continue ;;  # Windows import library: unusable on Unix
     esac
-    VESPA_LIBS="$VESPA_LIBS -l$n"
+    VESPA_STATIC=true
+    VESPA_LIBS="$VESPA_LIBS $f"
   done
+  if [ "$VESPA_STATIC" = "true" ]; then
+    echo ">> Vespa: static libraries"
+  else
+    for f in "$VESPA_LIBDIR"/libvtkCGAL*.so "$VESPA_LIBDIR"/libvtkCGAL*.dylib; do
+      [ -e "$f" ] || continue
+      n="${f##*/}"
+      case "$n" in
+        *.dylib) n="${n#lib}"; n="${n%.dylib}" ;;
+        *.so)    n="${n#lib}"; n="${n%.so}" ;;
+      esac
+      VESPA_LIBS="$VESPA_LIBS -l$n"
+    done
+  fi
 fi
 
 # --- RPATH (not needed when everything is static) ---
 RPATH_FLAG=""
-if [ "$VESPA_STATIC" = "false" ]; then
+if [ "$VESPA_STATIC" = "false" ] && [ "$VESPA_VENDORED" != "true" ]; then
   if [ "$VESPA_SOURCE" = "system" ]; then
     RPATH_FLAG="-Wl,-rpath,${VESPA_LIBDIR}"
   else
@@ -395,12 +357,17 @@ VTK_CPPFLAGS='`"$(R_HOME)/bin/Rscript" ../tools/configure.R --cppflags`'
 VTK_LIBS='`"$(R_HOME)/bin/Rscript" ../tools/configure.R --libs`'
 VTK_ARCHIVES=""
 GROUP_OPEN=""; GROUP_CLOSE=""; VTK_SYSLIBS=""
+STRIP_LDFLAGS=""
 case "$(uname -s)" in
   Linux*)
     GROUP_OPEN="-Wl,--start-group"; GROUP_CLOSE="-Wl,--end-group"
     VTK_SYSLIBS="-lpthread -ldl -lm -lz"
+    STRIP_LDFLAGS="-Wl,-s"
     ;;
-  Darwin*) VTK_SYSLIBS="-lz" ;;
+  Darwin*)
+    VTK_SYSLIBS="-lz"
+    STRIP_LDFLAGS="-Wl,-S"
+    ;;
 esac
 
 # --- glog, if present (ceres may pull symbols from it) ---
@@ -446,9 +413,11 @@ esac
 
 echo ">> Generating src/Makevars..."
 cat > src/Makevars <<EOF
-# Generated by configure (tarball-static-v9.1) -- do not edit.
-PKG_CPPFLAGS = ${VTK_CPPFLAGS} -I${VESPA_INC} -I${CGAL_INC} ${CERES_CFLAGS} ${EXPORT_FLAGS} -DCGAL_NDEBUG
-PKG_LIBS = ${GROUP_OPEN} ${VESPA_LIBS} ${GROUP_CLOSE} ${VTK_LIBS} ${VTK_SYSLIBS} ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${RPATH_FLAG} ${SYMBOL_FLAGS}
+# Generated by configure (vendored-vespa) -- do not edit.
+CXX_STD = CXX17
+CXXFLAGS += -g0
+PKG_CPPFLAGS = ${VTK_CPPFLAGS} ${VESPA_CPPFLAGS} ${EIGEN_CPPFLAGS} -I${CGAL_INC} ${CERES_CFLAGS} ${EXPORT_FLAGS} -DCGAL_NDEBUG
+PKG_LIBS = ${GROUP_OPEN} ${VESPA_LIBS} ${GROUP_CLOSE} ${VTK_LIBS} ${VTK_SYSLIBS} ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${RPATH_FLAG} ${SYMBOL_FLAGS} ${STRIP_LDFLAGS}
 EOF
 
 echo ">> Configuration completed successfully."

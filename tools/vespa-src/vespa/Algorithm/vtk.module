@@ -1,0 +1,14 @@
+NAME
+  vtkCGALAlgorithm
+DESCRIPTION
+  "This module contains helper namespace and class to translate between VTK and CGAL."
+GROUPS
+  Meshing
+DEPENDS
+  VTK::CommonCore
+  VTK::CommonDataModel
+  VTK::CommonExecutionModel
+  VTK::FiltersCore
+  VTK::FiltersExtraction
+  VTK::FiltersGeometry
+  CGAL::CGAL

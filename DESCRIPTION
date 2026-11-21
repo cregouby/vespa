@@ -15,7 +15,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 SystemRequirements: C++17, VTK >= 9.4, CGAL >= 5.5, Ceres Solver >= 2.0,
-    vespa >= 1.1
+    Eigen >= 3.2, Boost headers
 Imports:
     cli,
     Rcpp,

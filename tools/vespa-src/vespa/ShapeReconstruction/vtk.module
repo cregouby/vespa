@@ -1,0 +1,15 @@
+NAME
+  vtkCGALSR
+DESCRIPTION
+  "This module contains filters related to the ShapeReconstruction module of CGAL."
+GROUPS
+  Meshing
+DEPENDS
+  vtkCGALAlgorithm
+  vtkCGALPSP
+TEST_DEPENDS
+  VTK::CommonSystem
+  VTK::FiltersSources
+  VTK::IOInfovis
+  VTK::IOXML
+  VTK::TestingCore

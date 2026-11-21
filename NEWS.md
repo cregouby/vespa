@@ -2,6 +2,8 @@
 
 * Use the 'rvtk' package to provide VTK at install time, removing the
   bespoke VTK download logic from 'configure' and 'configure.win'.
+* Bundle the Vespa C++ sources in `tools/vespa-src` and compile them with the
+  package, so no separate Vespa installation or network access is required.
 * Reorganize documentation website.
 * Add CI/CD workflows relying on exposed VTK 9.7 / 9.6 / 9.5 builds (#1)
 * add 2 vignettes to website
