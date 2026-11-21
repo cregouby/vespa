@@ -4,9 +4,9 @@
 \name{vespa-package}
 \alias{vespa}
 \alias{vespa-package}
-\title{vespa: Mesh Transformations Using 'Vespa' 'VTK/CGAL' Mesh Processing Library}
+\title{vespa: Mesh Transformations with the 'Vespa' 'VTK/CGAL' Library}
 \description{
-Provides R wrappers for all 'Vespa' 3D mesh filters (isotropic re-meshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, as-rigid-as-possible deformation and more) via direct 'Rcpp' bindings to the 'Vespa C++' 'VTK/CGAL' library. Also includes a very fast 'STL' and 'VTP' file reader.
+Provides R wrappers for the 'Vespa' three-dimensional mesh filters (isotropic re-meshing, boolean operations, alpha wrapping, surface reconstruction, point set processing, as-rigid-as-possible deformation and more) via direct 'Rcpp' bindings to the 'Vespa' C++ 'VTK/CGAL' library. Also includes a fast reader for 'STL' and 'VTP' mesh files. The functions operate on 'mesh3d' objects and cover surface reconstruction, shape smoothing, subdivision, deformation, and signed distance field extraction. Algorithms rely on the Computational Geometry Algorithms Library (CGAL) and the Visualization Toolkit (VTK).
 }
 \seealso{
 Useful links:
