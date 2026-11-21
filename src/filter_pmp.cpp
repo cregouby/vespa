@@ -1,5 +1,9 @@
 #include "converters.h"
 
+#include <algorithm>
+#include <map>
+#include <utility>
+
 #include <vtkCGALAlphaWrapping.h>
 #include <vtkCGALBooleanOperation.h>
 #include <vtkCGALIsotropicRemesher.h>
@@ -11,10 +15,44 @@
 #include <vtkCGALRegionFairing.h>
 #include <vtkCGALShapeSmoothing.h>
 #include <vtkCGALSignedDistanceFunction.h>
+#include <vtkCellArray.h>
 #include <vtkIdTypeArray.h>
 #include <vtkImageData.h>
 #include <vtkNew.h>
 #include <vtkPointData.h>
+
+namespace {
+
+bool has_boundary_edges(vtkPolyData* poly) {
+    if (!poly || poly->GetNumberOfPolys() == 0)
+        return false;
+
+    std::map<std::pair<vtkIdType, vtkIdType>, unsigned int> edge_count;
+
+    vtkCellArray* cells = poly->GetPolys();
+    cells->InitTraversal();
+    vtkIdType npts = 0;
+    const vtkIdType* pts = nullptr;
+    while (cells->GetNextCell(npts, pts)) {
+        for (vtkIdType i = 0; i < npts; ++i) {
+            vtkIdType a = pts[i];
+            vtkIdType b = pts[(i + 1) % npts];
+            if (a == b)
+                continue;
+            if (a > b)
+                std::swap(a, b);
+            ++edge_count[std::make_pair(a, b)];
+        }
+    }
+
+    for (const auto& entry : edge_count) {
+        if (entry.second == 1)
+            return true;
+    }
+    return false;
+}
+
+} // namespace
 
 // [[Rcpp::export]]
 Rcpp::List rcpp_alpha_wrap(
@@ -225,6 +263,9 @@ Rcpp::List rcpp_patch_fill(
     bool                update_attributes  = true)
 {
     auto input = vespa::mesh3d_to_vtk(mesh);
+
+    if (point_ids.size() == 0 && !has_boundary_edges(input))
+        return vespa::vtk_to_mesh3d(input);
 
     vtkNew<vtkCGALPatchFilling> filter;
     filter->SetInputData(0, input);
