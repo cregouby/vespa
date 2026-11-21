@@ -1,18 +1,26 @@
 Package: vespa
-Title: Mesh Transformations Using 'Vespa' 'VTK/CGAL' Mesh Processing Library
-Version: 0.5.0
+Title: Mesh Transformations with the 'Vespa' 'VTK/CGAL' Library
+Version: 0.6.0
 Authors@R: person("Christophe", "Regouby", role = c("aut", "cph", "cre"), email = "christophe.regouby@free.fr")
-Description: Provides R wrappers for all 'Vespa' 3D mesh filters (isotropic re-meshing, boolean operations, alpha wrapping,
-            surface reconstruction, point set processing, as-rigid-as-possible deformation and more) via direct 'Rcpp' bindings
-            to the 'Vespa C++' 'VTK/CGAL' library. Also includes a very fast 'STL' and 'VTP' file reader.
-License: GPL (>= 3)
+Description: Provides R wrappers for the 'Vespa' three-dimensional mesh filters
+    (isotropic re-meshing, boolean operations, alpha wrapping, surface
+    reconstruction, point set processing, as-rigid-as-possible deformation and
+    more) via direct 'Rcpp' bindings to the 'Vespa' C++ 'VTK/CGAL' library.
+    Also includes a fast reader for 'STL' and 'VTP' mesh files. The functions
+    operate on 'mesh3d' objects and cover surface reconstruction, shape
+    smoothing, subdivision, deformation, and signed distance field extraction.
+    Algorithms rely on the Computational Geometry Algorithms Library (CGAL) and
+    the Visualization Toolkit (VTK).
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-SystemRequirements: VTK >= 9.4, CGAL >= 5.5, vespa >= 1.1
+SystemRequirements: C++17, VTK >= 9.4, CGAL >= 5.5, Ceres Solver >= 2.0,
+    vespa >= 1.1
 Imports:
     cli,
     Rcpp,
     rlang,
+    rvtk,
     sf
 Suggests:
     knitr,

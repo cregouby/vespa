@@ -9,4 +9,10 @@
 ^LICENSE\.md$
 ^\.github$
 ^cran-comments\.md$
+^\.Rhistory$
+^\.\.Rcheck$
+^inst/vtk$
+^inst/vespa$
+^src/.*\.(o|so|dll|dylib)$
+^src/(Makevars|Makevars\.win|vtk_libs\.rsp|vespa-symbols\.(map|exp))$
 air.toml

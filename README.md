@@ -10,12 +10,12 @@ status](https://github.com/cregouby/vespa/workflows/R-CMD-check/badge.svg)](http
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![CRAN
-status](https://www.r-pkg.org/badges/version/vespa)](https://CRAN.R-project.org/package=tabnet)
-[![](https://cranlogs.r-pkg.org/badges/vespa)](https://CRAN.R-project.org/package=tabnet)
+status](https://www.r-pkg.org/badges/version/vespa)](https://CRAN.R-project.org/package=vespa)
+[![](https://cranlogs.r-pkg.org/badges/vespa)](https://CRAN.R-project.org/package=vespa)
 <!-- badges: end -->
 
 **vespa** is an R package providing bindings to the
-[VESPA](https://gitlab.kitware.com/vtk-cgal/vespa) C++/VTK/CGAL mesh
+[VESPA](https://gitlab.kitware.com/vtk/meshing/vespa) C++/VTK/CGAL mesh
 processing library. It exposes CGAL geometry and surface processing
 algorithms as R functions operating on `mesh3d` objects (package
 [rgl](https://cran.r-project.org/package=rgl)).
@@ -34,23 +34,16 @@ rgl::shade3d(remesh, col = "steelblue")
 *Surface reconstruction from a point cloud*
 
 <table>
-
 <tr>
-
 <td align="center">
-
 <img src="man/figures/example1_1.png" width="230" /><br/><em>input
 cloud</em>
 </td>
-
 <td align="center">
-
 <img src="man/figures/example1_2.png" width="230" /><br/><em>reconstructed
 mesh</em>
 </td>
-
 </tr>
-
 </table>
 
 ``` r
@@ -68,21 +61,14 @@ rgl::shade3d(recon, col = "tomato")
 *As-Rigid-As-Possible mesh deformation*
 
 <table>
-
 <tr>
-
 <td align="center">
-
 <img src="man/figures/example2_1.png" width="230" /><br/><em>original</em>
 </td>
-
 <td align="center">
-
 <img src="man/figures/example2_2.png" width="230" /><br/><em>deformed</em>
 </td>
-
 </tr>
-
 </table>
 
 ``` r
@@ -109,10 +95,18 @@ rgl::shade3d(deformed, col = "goldenrod")
 ### Prerequisites
 
 The VESPA library requires CGAL \>= 5.3. and Ceres. You must install
-them with your software package manager.<br> For VTK \>=9.1, {vespa}
-will download a pre-build version if not found on your local machine.
+them with your software package manager.<br> VTK (\>= 9.4) is provided
+by the [rvtk](https://cran.r-project.org/package=rvtk) package, which
+uses a system installation when available and otherwise supplies
+pre-built static libraries.
 
 ### R package installation
+
+``` r
+install.packages("vespa")
+```
+
+You can install the development version from GitHub with:
 
 ``` r
 # install.packages("pak")
@@ -122,12 +116,9 @@ pak::pak("cregouby/vespa")
 ## Installation (local development version)
 
 <details>
-
 <summary>
-
 Click for detailed installation procedure
 </summary>
-
 <p>
 
 ### C++ package installation
@@ -167,7 +158,6 @@ CGAL_INC=/opt/homebrew/include \
 ```
 
 </p>
-
 </details>
 
 ## Usage notes

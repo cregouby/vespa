@@ -12,5 +12,7 @@ docs
 src/vtk_libs.rsp
 inst/vtk/
 ..Rcheck
+*.Rcheck/
+*.tar.gz
 *.html
 **/libs/*

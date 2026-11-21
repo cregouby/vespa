@@ -28,4 +28,8 @@ export(shape_smoothing)
 export(signed_distance_function)
 importFrom(Rcpp,sourceCpp)
 importFrom(rlang,is_installed)
+importFrom(rvtk,
+  CppFlags,
+  LdFlagsFile
+)
 useDynLib(vespa, .registration = TRUE)
