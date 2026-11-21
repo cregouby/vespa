@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">vespa</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,7 +37,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="vespa-060">vespa 0.6.0<a class="anchor" aria-label="anchor" href="#vespa-060"></a></h2>
-<ul><li>Reorganize documentation website.</li>
+<ul><li>Use the ‘rvtk’ package to provide VTK at install time, removing the bespoke VTK download logic from ‘configure’ and ‘configure.win’.</li>
+<li>Reorganize documentation website.</li>
 <li>Add CI/CD workflows relying on exposed VTK 9.7 / 9.6 / 9.5 builds (<a href="https://github.com/cregouby/vespa/issues/1" class="external-link">#1</a>)</li>
 <li>add 2 vignettes to website</li>
 <li>Fix Windows R CMD check “compiled code” warning: under header-only CGAL 6.x (rtools45/msys2), the CGAL assertion handler and CORE number-type headers emit <code>std::cerr</code>/<code>std::cout</code>/<code>abort</code>/<code>exit</code> references into the package’s own objects. <code>configure.win</code> now generates a console-output shim forwarding those messages to <code>REprintf()</code> (R API) and dropping the <code>abort()</code>/<code>exit()</code> branches so violations fall through to the existing <code>throw</code> path.</li>

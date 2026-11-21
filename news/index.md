@@ -2,6 +2,8 @@
 
 ## vespa 0.6.0
 
+- Use the ‘rvtk’ package to provide VTK at install time, removing the
+  bespoke VTK download logic from ‘configure’ and ‘configure.win’.
 - Reorganize documentation website.
 - Add CI/CD workflows relying on exposed VTK 9.7 / 9.6 / 9.5 builds
   ([\#1](https://github.com/cregouby/vespa/issues/1))

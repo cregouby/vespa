@@ -1,7 +1,7 @@
 # vespa — VTK Enhanced with Surface Processing Algorithms
 
 **vespa** is an R package providing bindings to the
-[VESPA](https://gitlab.kitware.com/vtk-cgal/vespa) C++/VTK/CGAL mesh
+[VESPA](https://gitlab.kitware.com/vtk/meshing/vespa) C++/VTK/CGAL mesh
 processing library. It exposes CGAL geometry and surface processing
 algorithms as R functions operating on `mesh3d` objects (package
 [rgl](https://cran.r-project.org/package=rgl)).
@@ -65,10 +65,19 @@ rgl::shade3d(deformed, col = "goldenrod")
 
 The VESPA library requires CGAL \>= 5.3. and Ceres. You must install
 them with your software package manager.  
-For VTK \>=9.1, {vespa} will download a pre-build version if not found
-on your local machine.
+VTK (\>= 9.4) is provided by the
+[rvtk](https://cran.r-project.org/package=rvtk) package, which uses a
+system installation when available and otherwise supplies pre-built
+static libraries.
 
 ### R package installation
+
+``` r
+
+install.packages("vespa")
+```
+
+You can install the development version from GitHub with:
 
 ``` r
 
