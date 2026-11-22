@@ -8,6 +8,7 @@
 ^pkgdown$
 ^LICENSE\.md$
 ^\.github$
+^\.prepare$
 ^cran-comments\.md$
 ^\.Rhistory$
 ^\.\.Rcheck$

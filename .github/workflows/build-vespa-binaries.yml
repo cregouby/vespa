@@ -21,7 +21,7 @@ jobs:
       - name: Read Vespa version
         shell: bash
         run: |
-          echo "VESPA_TAG=$(tr -d '[:space:]' < .github/vespa-version.txt)" >> "$GITHUB_ENV"
+          echo "VESPA_TAG=$(tr -d '[:space:]' < tools/vespa-version.txt)" >> "$GITHUB_ENV"
         
       # pacman from Rtools is on PATH after setup-r
       - name: Install dependencies via pacman

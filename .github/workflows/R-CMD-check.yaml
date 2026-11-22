@@ -73,7 +73,7 @@ jobs:
               ;;
           esac
 
-      # Fetch the prebuilt VTK bundle pinned by .github/vtk-version.txt and
+      # Fetch the prebuilt VTK bundle pinned by tools/vtk-version.txt and
       # fail fast if the extracted tree is incomplete: find_package(VTK)
       # needs lib/cmake/vtk-X.Y/vtk-config.cmake and the vtkWrapHierarchy
       # executables exported by VTK-targets.cmake.
@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          VTK_VERSION="$(tr -d '[:space:]' < .github/vtk-version.txt)"
+          VTK_VERSION="$(tr -d '[:space:]' < tools/vtk-version.txt)"
           VTK_MINOR="${VTK_VERSION%.*}"
           case "$RUNNER_OS" in
             Linux)   P=linux-x86_64;   ROOT="/opt/vtk-${VTK_MINOR}"; sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
@@ -105,7 +105,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ matrix.config.vespa-root }}
-          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt', '.github/vtk-version.txt', 'tools/build-vespa/CMakeLists.txt') }}
+          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/vespa-version.txt', 'tools/vtk-version.txt', 'tools/build-vespa/CMakeLists.txt') }}
 
       - name: Build and install Vespa
         if: steps.cache-vespa-bundle.outputs.cache-hit != 'true'
@@ -113,7 +113,7 @@ jobs:
         run: |
           set -e
           T="${RUNNER_TEMP//\\//}"
-          VESPA_TAG="$(tr -d '[:space:]' < .github/vespa-version.txt)"
+          VESPA_TAG="$(tr -d '[:space:]' < tools/vespa-version.txt)"
           if [ "$RUNNER_OS" != "Windows" ]; then
             sudo mkdir -p "${{ matrix.config.vespa-root }}"
             sudo chown "$USER" "${{ matrix.config.vespa-root }}"

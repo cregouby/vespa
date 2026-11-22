@@ -6,11 +6,11 @@ on:
       vtk_version:
         description: 'VTK version to build'
         required: true
-        default: '9.6.2'
+        default: '9.7.2'
         type: string
   push:
     paths:
-      - '.github/vtk-version.txt'
+      - 'tools/vtk-version.txt'
       # both spellings during the transition (renamed file or not)
       - '.github/workflows/build-vtk-for-vespa.yml'
 
@@ -46,7 +46,7 @@ jobs:
         run: |
           # FIX 2026-10-25: the workflow_dispatch input vtk_version was
           # declared but NEVER read - read-version only used the file, so
-          # dispatching "9.5.2" while .github/vtk-version.txt still said
+          # dispatching "9.5.2" while tools/vtk-version.txt still said
           # "9.6.2" silently rebuilt 9.6.2 (the MinGW localtime_r failure).
           # From now on: on workflow_dispatch the input is authoritative;
           # push-triggered builds keep reading the file.
@@ -54,16 +54,16 @@ jobs:
           EVENT="${{ github.event_name }}"
           if [ "${EVENT}" = "workflow_dispatch" ] && [ -n "${INPUT_VERSION}" ]; then
             VTK_VERSION="$(printf '%s' "${INPUT_VERSION}" | tr -d '[:space:]')"
-            FILE_VERSION="$(tr -d '[:space:]' < .github/vtk-version.txt)"
+            FILE_VERSION="$(tr -d '[:space:]' < tools/vtk-version.txt)"
             echo ">> Version source: workflow_dispatch input (${VTK_VERSION})"
             if [ "${VTK_VERSION}" != "${FILE_VERSION}" ]; then
-              echo ">> NOTE: input ${VTK_VERSION} != .github/vtk-version.txt (${FILE_VERSION})."
+              echo ">> NOTE: input ${VTK_VERSION} != tools/vtk-version.txt (${FILE_VERSION})."
               echo ">> The input wins for THIS run only; update the file to make it durable"
               echo ">> (R-CMD-check fetches the release tag derived from the file)."
             fi
           else
-            VTK_VERSION="$(tr -d '[:space:]' < .github/vtk-version.txt)"
-            echo ">> Version source: .github/vtk-version.txt (${VTK_VERSION})"
+            VTK_VERSION="$(tr -d '[:space:]' < tools/vtk-version.txt)"
+            echo ">> Version source: tools/vtk-version.txt (${VTK_VERSION})"
           fi
           VTK_MINOR="${VTK_VERSION%.*}"
 

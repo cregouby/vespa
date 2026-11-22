@@ -41,11 +41,11 @@ jobs:
             libx11-dev libgl1-mesa-dev libglu1-mesa-dev
           echo "LD_LIBRARY_PATH=/opt/vespa/lib:${LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
 
-      # Fetch the prebuilt VTK bundle pinned by .github/vtk-version.txt
+      # Fetch the prebuilt VTK bundle pinned by tools/vtk-version.txt
       - name: Fetch prebuilt VTK
         run: |
           set -e
-          VTK_VERSION="$(tr -d '[:space:]' < .github/vtk-version.txt)"
+          VTK_VERSION="$(tr -d '[:space:]' < tools/vtk-version.txt)"
           VTK_MINOR="${VTK_VERSION%.*}"
           ROOT="/opt/vtk-${VTK_MINOR}"
           sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT"
@@ -66,14 +66,14 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: /opt/vespa
-          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/vespa-version.txt', '.github/vtk-version.txt', 'tools/build-vespa/CMakeLists.txt') }}
+          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/vespa-version.txt', 'tools/vtk-version.txt', 'tools/build-vespa/CMakeLists.txt') }}
 
       - name: Build and install Vespa
         if: steps.cache-vespa-bundle.outputs.cache-hit != 'true'
         run: |
           set -e
           T="${RUNNER_TEMP//\\//}"
-          VESPA_TAG="$(tr -d '[:space:]' < .github/vespa-version.txt)"
+          VESPA_TAG="$(tr -d '[:space:]' < tools/vespa-version.txt)"
           sudo mkdir -p /opt/vespa
           sudo chown "$USER" /opt/vespa
           cmake -S tools/build-vespa -B "$T/vespa-build" \
