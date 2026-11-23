@@ -326,7 +326,7 @@ if [ "$VESPA_VENDORED" = "true" ]; then
   VESPA_LIBS=""
   echo ">> Vespa: compiled from vendored sources"
 else
-  VESPA_CPPFLAGS="-I${VESPA_INC}"
+  VESPA_CPPFLAGS="-I${VESPA_INC} -I../tools/vespa-src/vespa/Algorithm"
   VESPA_STATIC=false
   VESPA_LIBS=""
   for f in "$VESPA_LIBDIR"/libvtkCGAL*.a; do
