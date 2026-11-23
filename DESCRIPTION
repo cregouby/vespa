@@ -1,6 +1,6 @@
 Package: vespa
 Title: Mesh Transformations with the 'Vespa' 'VTK/CGAL' Library
-Version: 0.6.0
+Version: 0.6.1
 Authors@R: person("Christophe", "Regouby", role = c("aut", "cph", "cre"), email = "christophe.regouby@free.fr")
 Description: Provides R wrappers for the 'Vespa' three-dimensional mesh filters
     (isotropic re-meshing, boolean operations, alpha wrapping, surface

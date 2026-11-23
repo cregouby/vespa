@@ -14,7 +14,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON
 
 set(INSTALL_PREFIX "${CMAKE_BINARY_DIR}/vespa-install"
     CACHE PATH "Destination directory for Vespa headers and libraries")
-set(VESPA_GIT_TAG "v1.0" CACHE STRING "Vespa git tag or commit hash to build")
+set(VESPA_GIT_TAG "v1.1" CACHE STRING "Vespa git tag or commit hash to build")
 
 # ---------------------------------------------------------------------------
 # Résolution de VTK_ROOT : variable cache d'abord, sinon environnement (CI).

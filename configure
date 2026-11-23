@@ -1,6 +1,18 @@
 #!/bin/sh
 # configure -- Unix/macOS configuration for the vespa R package.
-# Revision: tarball-static-v9.1
+# Revision: tarball-static-v9.3
+# v9.3 (r-universe build) :
+#  - Version pins moved from .github/ (excluded from the source tarball by
+#    .Rbuildignore) to tools/, which IS shipped. configure now reads
+#    tools/vtk-version.txt and tools/vespa-version.txt both in-repo and
+#    when installing the built tarball. Previously the Vespa pin silently
+#    fell back to v1.1 on any tarball install.
+#  - VTK release URL no longer derives from GITHUB_REPOSITORY. Under
+#    r-universe that variable is the universe monorepo (r-universe/<owner>),
+#    which has no VTK release assets, so the download 404'd. The default is
+#    now hardcoded to cregouby/vespa; VESPA_RELEASES_REPO overrides it for
+#    forks testing their own releases.
+#  - VTK download pin bumped 9.6.2 -> 9.7.2 to match tools/vtk-version.txt.
 # v9.1 :
 #  - v9 introduced the libvtk* archive version filter (stale mixed-version
 #    bundles must never enter the link line) but VTK_MINOR was only set in
@@ -269,6 +281,7 @@ fi
 
 # Priority 3: vendored sources (always available, no network access needed).
 VESPA_VENDORED=false
+
 if [ -z "$VESPA_LIBDIR" ]; then
   if [ -d "tools/vespa-src/vespa" ]; then
     VESPA_SOURCE="vendored"

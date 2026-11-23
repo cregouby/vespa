@@ -1,5 +1,10 @@
 #include "converters.h"
 
+#include <algorithm>
+#include <map>
+#include <utility>
+#include <vector>
+
 #include <vtkCGALAlphaWrapping.h>
 #include <vtkCGALBooleanOperation.h>
 #include <vtkCGALIsotropicRemesher.h>
@@ -11,10 +16,86 @@
 #include <vtkCGALRegionFairing.h>
 #include <vtkCGALShapeSmoothing.h>
 #include <vtkCGALSignedDistanceFunction.h>
+#include <vtkCellArray.h>
 #include <vtkIdTypeArray.h>
 #include <vtkImageData.h>
 #include <vtkNew.h>
 #include <vtkPointData.h>
+
+namespace {
+
+struct Boundary {
+    bool has_edges = false;
+    bool triangular_cycle = false;
+    vtkIdType a = 0;
+    vtkIdType b = 0;
+    vtkIdType c = 0;
+};
+
+Boundary inspect_boundary(vtkPolyData* poly) {
+    Boundary result;
+    if (!poly || poly->GetNumberOfPolys() == 0)
+        return result;
+
+    using Edge = std::pair<vtkIdType, vtkIdType>;
+    std::map<Edge, unsigned int> edge_count;
+    std::map<Edge, Edge> directed;
+
+    vtkCellArray* cells = poly->GetPolys();
+    cells->InitTraversal();
+    vtkIdType npts = 0;
+    const vtkIdType* pts = nullptr;
+    while (cells->GetNextCell(npts, pts)) {
+        for (vtkIdType i = 0; i < npts; ++i) {
+            vtkIdType u = pts[i];
+            vtkIdType v = pts[(i + 1) % npts];
+            if (u == v)
+                continue;
+            Edge key = std::make_pair(std::min(u, v), std::max(u, v));
+            ++edge_count[key];
+            directed[key] = std::make_pair(u, v);
+        }
+    }
+
+    std::map<vtkIdType, vtkIdType> next;
+    for (const auto& entry : edge_count) {
+        if (entry.second != 1)
+            continue;
+        result.has_edges = true;
+        const Edge& edge = directed[entry.first];
+        next[edge.first] = edge.second;
+    }
+
+    if (next.size() == 3) {
+        vtkIdType a = next.begin()->first;
+        vtkIdType b = next[a];
+        vtkIdType c = next[b];
+        if (a != b && b != c && c != a && next[c] == a) {
+            result.triangular_cycle = true;
+            result.a = a;
+            result.b = b;
+            result.c = c;
+        }
+    }
+
+    return result;
+}
+
+void fill_triangular_hole(vtkPolyData* input, vtkPolyData* output,
+                          const Boundary& boundary) {
+    vtkNew<vtkPoints> points;
+    points->DeepCopy(input->GetPoints());
+
+    vtkNew<vtkCellArray> polys;
+    polys->DeepCopy(input->GetPolys());
+    vtkIdType triangle[3] = {boundary.b, boundary.a, boundary.c};
+    polys->InsertNextCell(3, triangle);
+
+    output->SetPoints(points);
+    output->SetPolys(polys);
+}
+
+} // namespace
 
 // [[Rcpp::export]]
 Rcpp::List rcpp_alpha_wrap(
@@ -225,6 +306,17 @@ Rcpp::List rcpp_patch_fill(
     bool                update_attributes  = true)
 {
     auto input = vespa::mesh3d_to_vtk(mesh);
+
+    if (point_ids.size() == 0) {
+        Boundary boundary = inspect_boundary(input);
+        if (!boundary.has_edges)
+            return vespa::vtk_to_mesh3d(input);
+        if (boundary.triangular_cycle) {
+            vtkNew<vtkPolyData> filled;
+            fill_triangular_hole(input, filled, boundary);
+            return vespa::vtk_to_mesh3d(filled);
+        }
+    }
 
     vtkNew<vtkCGALPatchFilling> filter;
     filter->SetInputData(0, input);

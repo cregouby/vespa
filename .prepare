@@ -1,0 +1,50 @@
+#!/bin/sh
+# .prepare -- run by r-universe-org/build-source before R CMD build.
+#
+# It is NOT executed by R CMD build/INSTALL, and it is excluded from the
+# source tarball (see .Rbuildignore), so it only affects the r-universe CI.
+#
+# Rationale: the r-universe base image ships Boost, Eigen and MPFR but not
+# CGAL or Ceres, and rstudio/r-system-requirements has no rule matching
+# "CGAL"/"Ceres Solver", so pak installs nothing for this package. The
+# configure script then aborts with "Checking for CGAL... FAILED.".
+#
+# This is an interim shim. Remove it once CGAL/Ceres are provided either by
+# r-universe-org/base-image or by an r-system-requirements rule.
+
+set -u
+
+have_cgal() {
+  [ -f /usr/include/CGAL/config.h ] || [ -f /usr/local/include/CGAL/config.h ]
+}
+
+have_ceres() {
+  [ -f /usr/include/ceres/ceres.h ] || [ -f /usr/local/include/ceres/ceres.h ]
+}
+
+if have_cgal && have_ceres; then
+  echo ">> .prepare: CGAL and Ceres already available"
+  exit 0
+fi
+
+if ! command -v apt-get >/dev/null 2>&1; then
+  echo ">> .prepare: apt-get not found; CGAL/Ceres must come from the image"
+  exit 0
+fi
+
+SUDO=""
+if [ "$(id -u)" -ne 0 ]; then
+  if command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+  else
+    echo ">> .prepare: CGAL/Ceres missing and no root/sudo; skipping"
+    exit 0
+  fi
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+echo ">> .prepare: installing CGAL and Ceres development headers"
+$SUDO apt-get update -y || exit 0
+$SUDO apt-get install -y libcgal-dev libceres-dev || exit 0
+
+exit 0

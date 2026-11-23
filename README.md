@@ -11,6 +11,7 @@ status](https://github.com/cregouby/vespa/workflows/R-CMD-check/badge.svg)](http
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![CRAN
 status](https://www.r-pkg.org/badges/version/vespa)](https://CRAN.R-project.org/package=vespa)
+![r-universe](https://cregobuy.r-universe.dev/badges/vespa)
 [![](https://cranlogs.r-pkg.org/badges/vespa)](https://CRAN.R-project.org/package=vespa)
 <!-- badges: end -->
 
@@ -34,16 +35,23 @@ rgl::shade3d(remesh, col = "steelblue")
 *Surface reconstruction from a point cloud*
 
 <table>
+
 <tr>
+
 <td align="center">
+
 <img src="man/figures/example1_1.png" width="230" /><br/><em>input
 cloud</em>
 </td>
+
 <td align="center">
+
 <img src="man/figures/example1_2.png" width="230" /><br/><em>reconstructed
 mesh</em>
 </td>
+
 </tr>
+
 </table>
 
 ``` r
@@ -61,14 +69,21 @@ rgl::shade3d(recon, col = "tomato")
 *As-Rigid-As-Possible mesh deformation*
 
 <table>
+
 <tr>
+
 <td align="center">
+
 <img src="man/figures/example2_1.png" width="230" /><br/><em>original</em>
 </td>
+
 <td align="center">
+
 <img src="man/figures/example2_2.png" width="230" /><br/><em>deformed</em>
 </td>
+
 </tr>
+
 </table>
 
 ``` r
@@ -116,9 +131,12 @@ pak::pak("cregouby/vespa")
 ## Installation (local development version)
 
 <details>
+
 <summary>
+
 Click for detailed installation procedure
 </summary>
+
 <p>
 
 ### C++ package installation
@@ -158,6 +176,7 @@ CGAL_INC=/opt/homebrew/include \
 ```
 
 </p>
+
 </details>
 
 ## Usage notes
