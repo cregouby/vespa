@@ -1,2 +1,2 @@
 #!/bin/sh
-rm -f src/Makevars.win src/vtk_libs.rsp
+rm -f src/Makevars.win src/vtk_libs.rsp src/vespa-symbols.map src/vespa-symbols.exp

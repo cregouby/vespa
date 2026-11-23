@@ -20,16 +20,13 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { os: ubuntu-24.04, vespa-root: /opt/vespa }
-          - { os: macos-latest, vespa-root: /opt/vespa }
-          - { os: windows-latest, vespa-root: D:/a/vespa, experimental: true }
+          - { os: ubuntu-24.04 }
+          - { os: macos-latest }
+          - { os: windows-latest, experimental: true }
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      CMAKE_GENERATOR: Ninja
       RGL_USE_NULL: true
-      # Priority 2 in configure: prebuilt Vespa bundle location
-      VESPA_ROOT: ${{ matrix.config.vespa-root }}
 
     steps:
       - uses: actions/checkout@v7
@@ -38,6 +35,9 @@ jobs:
         with:
           use-public-rspm: ${{ runner.os == 'Linux' }}
 
+      # Only the native dependencies of the bundled Vespa sources are needed.
+      # VTK itself is supplied by the 'rvtk' R package (declared in Imports):
+      # no prebuilt VTK tarball download and no Vespa superbuild in CI.
       # pacman comes from Rtools and is on PATH after setup-r (Windows).
       # Windows: rtools45 paths are pinned; bump when Rtools versions do.
       - name: Install system dependencies and set toolchain env
@@ -47,91 +47,29 @@ jobs:
           case "$RUNNER_OS" in
             Linux)
               sudo apt-get update
-              sudo apt-get install -y \
-                libcgal-dev libceres-dev cmake ninja-build \
-                build-essential libboost-all-dev libeigen3-dev \
-                libx11-dev libgl1-mesa-dev libglu1-mesa-dev
-              echo "LD_LIBRARY_PATH=${{ matrix.config.vespa-root }}/lib:${LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+              sudo apt-get install -y --no-install-recommends \
+                libcgal-dev libceres-dev libeigen3-dev libboost-all-dev \
+                libgmp-dev libmpfr-dev
               ;;
             macOS)
-              brew install cgal ceres-solver ninja
-              brew install --cask xquartz
-              echo "/opt/X11/bin" >> "$GITHUB_PATH"
-              echo "DISPLAY=:0" >> "$GITHUB_ENV"
-              echo "DYLD_LIBRARY_PATH=${{ matrix.config.vespa-root }}/lib:${DYLD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+              brew install cgal ceres-solver eigen
               ;;
             Windows)
               pacman -S --noconfirm --needed \
                 mingw-w64-ucrt-x86_64-cgal \
                 mingw-w64-ucrt-x86_64-ceres-solver \
                 mingw-w64-ucrt-x86_64-eigen3 \
-                mingw-w64-ucrt-x86_64-boost \
-                mingw-w64-ucrt-x86_64-ninja
+                mingw-w64-ucrt-x86_64-boost
               echo "CC=C:/rtools45/x86_64-w64-mingw32.static.posix/bin/gcc.exe" >> "$GITHUB_ENV"
               echo "CXX=C:/rtools45/x86_64-w64-mingw32.static.posix/bin/g++.exe" >> "$GITHUB_ENV"
               echo "C:/rtools45/ucrt64/bin" >> "$GITHUB_PATH"
               ;;
           esac
 
-      # Fetch the prebuilt VTK bundle pinned by tools/vtk-version.txt and
-      # fail fast if the extracted tree is incomplete: find_package(VTK)
-      # needs lib/cmake/vtk-X.Y/vtk-config.cmake and the vtkWrapHierarchy
-      # executables exported by VTK-targets.cmake.
-      - name: Fetch prebuilt VTK
-        shell: bash
-        run: |
-          set -e
-          VTK_VERSION="$(tr -d '[:space:]' < tools/vtk-version.txt)"
-          VTK_MINOR="${VTK_VERSION%.*}"
-          case "$RUNNER_OS" in
-            Linux)   P=linux-x86_64;   ROOT="/opt/vtk-${VTK_MINOR}"; sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
-            macOS)   P=darwin-arm64;   ROOT="/opt/vtk-${VTK_MINOR}"; sudo mkdir -p "$ROOT" && sudo chown "$USER" "$ROOT" ;;
-            Windows) P=windows-x86_64; ROOT="D:/a/vtk-${VTK_MINOR}"; mkdir -p "$ROOT" ;;
-          esac
-          curl -fsSL "https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${P}.tar.gz" -o vtk.tar.gz
-          tar -xzf vtk.tar.gz -C "$ROOT" --strip-components=1
-          rm vtk.tar.gz
-          [ -f "$ROOT/lib/cmake/vtk-${VTK_MINOR}/vtk-config.cmake" ] || {
-            echo "ERROR: vtk-config.cmake missing from the bundle extracted in $ROOT"; exit 1; }
-          ls "$ROOT"/bin/vtkWrapHierarchy-* >/dev/null 2>&1 || {
-            echo "ERROR: bin/vtkWrapHierarchy-* missing in $ROOT (stale release or package without bin/)"; exit 1; }
-          echo "VTK_ROOT=$ROOT" >> "$GITHUB_ENV"
-
-      # Build the Vespa bundle into vespa-root (Priority 2 in configure).
-      # The cache key covers the VTK and Vespa versions plus the superbuild
-      # recipe, so a bundle built against another VTK is never reused.
-      - name: Restore Vespa bundle cache
-        id: cache-vespa-bundle
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ matrix.config.vespa-root }}
-          key: vespa-bundle-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/vespa-version.txt', 'tools/vtk-version.txt', 'tools/build-vespa/CMakeLists.txt') }}
-
-      - name: Build and install Vespa
-        if: steps.cache-vespa-bundle.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          set -e
-          T="${RUNNER_TEMP//\\//}"
-          VESPA_TAG="$(tr -d '[:space:]' < tools/vespa-version.txt)"
-          if [ "$RUNNER_OS" != "Windows" ]; then
-            sudo mkdir -p "${{ matrix.config.vespa-root }}"
-            sudo chown "$USER" "${{ matrix.config.vespa-root }}"
-          fi
-          cmake -S tools/build-vespa -B "$T/vespa-build" \
-            -DINSTALL_PREFIX="${{ matrix.config.vespa-root }}" \
-            -DVESPA_GIT_TAG="$VESPA_TAG" -DVTK_ROOT="$VTK_ROOT"
-          cmake --build "$T/vespa-build" --parallel
-
-      - name: Save Vespa cache
-        if: success() && steps.cache-vespa-bundle.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ matrix.config.vespa-root }}
-          key: ${{ steps.cache-vespa-bundle.outputs.cache-primary-key }}
-
-      # ── R check ─────────────────────────────────────────────────────────────
-
+      # Installs 'rvtk' from CRAN along with the other Imports. Its install
+      # time configuration resolves VTK (system installation when available,
+      # pre-built static libraries otherwise) and 'configure' queries the
+      # resulting flags through tools/configure.R.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |

@@ -92,8 +92,9 @@ rgl::shade3d(deformed, col = "goldenrod")
 
 ### Prerequisites
 
-The VESPA library requires CGAL >= 5.3. and Ceres. You must install them with your software package manager.<br>
-VTK (>= 9.4) is provided by the [rvtk](https://cran.r-project.org/package=rvtk) package, which uses a system installation when available and otherwise supplies pre-built static libraries.
+The package requires CGAL (>= 5.5), Ceres Solver (>= 2.0), Eigen (>= 3.2), and Boost headers. Install them with your software package manager.<br>
+VTK (>= 9.4) is provided by the [rvtk](https://cran.r-project.org/package=rvtk) package, which uses a system installation when available and otherwise supplies pre-built static libraries.<br>
+The Vespa C++ sources are bundled with the package and compiled at install time; no separate Vespa installation or network access is required.
 
 ### R package installation
 
@@ -113,37 +114,17 @@ pak::pak("cregouby/vespa")
 <details>
   <summary>Click for detailed installation procedure</summary><p>
 
-### C++ package installation
-
-Installation of VESPA C++ library shall follow [Vespa Installation Documentation](https://gitlab.kitware.com/vtk/meshing/vespa#vespa).
-We will rely on VESPA being installed in the path `CMAKE_INSTALL_PREFIX` environemnt variable
-
-As soon as VESPA installation path is in the environemnt variable `CMAKE_INSTALL_PREFIX`, then we can provide it to the installation script :
-
 ### R package installation step by step
 
 ```sh
 git clone git@github.com:cregouby/vespa.git
 cd vespa
-export VESPA_ROOT=$CMAKE_INSTALL_PREFIX
 R CMD INSTALL .
 ```
 
-Run the `configure`
-script once before building so that `src/Makevars` is generated:
-
-```sh
-./configure
-```
-
-Override auto-detected paths if needed:
-
-```sh
-VESPA_DIR=/usr/local/bin/vespa \
-VTK_DIR=/usr/local/lib/cmake/vtk-9.5 \
-CGAL_INC=/opt/homebrew/include \
-./configure
-```
+The bundled Vespa sources are used automatically. Advanced users can instead
+point `VESPA_ROOT` at an existing Vespa installation before running
+`R CMD INSTALL`.
 
 </p></details>
 

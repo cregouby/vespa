@@ -151,6 +151,7 @@ try_candidate() {
   return 0
 }
 
+VESPA_VENDORED=false
 try_candidate "$(pwd)/inst/vespa"
 if [ -z "${FOUND_ROOT}" ] && [ -n "${VESPA_ROOT}" ]; then
   try_candidate "${VESPA_ROOT}"
@@ -159,71 +160,74 @@ if [ -z "${FOUND_ROOT}" ] && [ -n "${RUNNER_TEMP_N}" ]; then
   try_candidate "${RUNNER_TEMP_N}/vespa-build/vespa-install"
 fi
 
-if [ -z "${FOUND_ROOT}" ] || [ -z "${FOUND_INC}" ] || [ -z "${FOUND_LIB}" ]; then
-  echo ">> ERROR: static Vespa bundle not found." >&2
-  echo ">> Diagnostics dump:" >&2
-  echo ">>   pwd         = $(pwd)" >&2
-  echo ">>   VESPA_ROOT  = '${VESPA_ROOT}'" >&2
-  echo ">>   RUNNER_TEMP = '${RUNNER_TEMP}'" >&2
-  if [ -n "${VESPA_ROOT}" ] && [ -d "${VESPA_ROOT}" ]; then
-    echo ">>   --- contents of ${VESPA_ROOT} ---" >&2
-    ls -la "${VESPA_ROOT}" >&2
-    if [ -d "${VESPA_ROOT}/include" ]; then
-      echo ">>   --- contents of ${VESPA_ROOT}/include ---" >&2
-      ls "${VESPA_ROOT}/include" >&2
-    else
-      echo ">>   (no include/ subdirectory under VESPA_ROOT)" >&2
-    fi
-    if [ -d "${VESPA_ROOT}/lib" ]; then
-      echo ">>   --- contents of ${VESPA_ROOT}/lib ---" >&2
-      ls "${VESPA_ROOT}/lib" >&2
-    else
-      echo ">>   (no lib/ subdirectory under VESPA_ROOT)" >&2
-    fi
+if [ -z "${FOUND_ROOT}" ]; then
+  if [ -d "tools/vespa-src/vespa" ]; then
+    VESPA_VENDORED=true
+    echo ">> Vespa not found; using vendored sources in tools/vespa-src"
   else
-    echo ">>   VESPA_ROOT is empty or does not exist." >&2
-    echo ">>   If VESPA_ROOT is set in the workflow env but empty here, the" >&2
-    echo ">>   R build step did not propagate the environment to configure.win." >&2
-  fi
-  if [ -n "${RUNNER_TEMP_N}" ] && [ -d "${RUNNER_TEMP_N}/vespa-build" ]; then
-    echo ">>   --- contents of ${RUNNER_TEMP_N}/vespa-build ---" >&2
-    ls "${RUNNER_TEMP_N}/vespa-build" >&2
-    if [ -d "${RUNNER_TEMP_N}/vespa-build/vespa-install" ]; then
-      echo ">>   --- contents of .../vespa-build/vespa-install ---" >&2
-      ls "${RUNNER_TEMP_N}/vespa-build/vespa-install" >&2
+    echo ">> ERROR: static Vespa bundle not found." >&2
+    echo ">> Diagnostics dump:" >&2
+    echo ">>   pwd         = $(pwd)" >&2
+    echo ">>   VESPA_ROOT  = '${VESPA_ROOT}'" >&2
+    echo ">>   RUNNER_TEMP = '${RUNNER_TEMP}'" >&2
+    if [ -n "${VESPA_ROOT}" ] && [ -d "${VESPA_ROOT}" ]; then
+      echo ">>   --- contents of ${VESPA_ROOT} ---" >&2
+      ls -la "${VESPA_ROOT}" >&2
+      if [ -d "${VESPA_ROOT}/include" ]; then
+        echo ">>   --- contents of ${VESPA_ROOT}/include ---" >&2
+        ls "${VESPA_ROOT}/include" >&2
+      else
+        echo ">>   (no include/ subdirectory under VESPA_ROOT)" >&2
+      fi
+      if [ -d "${VESPA_ROOT}/lib" ]; then
+        echo ">>   --- contents of ${VESPA_ROOT}/lib ---" >&2
+        ls "${VESPA_ROOT}/lib" >&2
+      else
+        echo ">>   (no lib/ subdirectory under VESPA_ROOT)" >&2
+      fi
+    else
+      echo ">>   VESPA_ROOT is empty or does not exist." >&2
+      echo ">>   If VESPA_ROOT is set in the workflow env but empty here, the" >&2
+      echo ">>   R build step did not propagate the environment to configure.win." >&2
     fi
+    if [ -n "${RUNNER_TEMP_N}" ] && [ -d "${RUNNER_TEMP_N}/vespa-build" ]; then
+      echo ">>   --- contents of ${RUNNER_TEMP_N}/vespa-build ---" >&2
+      ls "${RUNNER_TEMP_N}/vespa-build" >&2
+      if [ -d "${RUNNER_TEMP_N}/vespa-build/vespa-install" ]; then
+        echo ">>   --- contents of .../vespa-build/vespa-install ---" >&2
+        ls "${RUNNER_TEMP_N}/vespa-build/vespa-install" >&2
+      fi
+    fi
+    exit 1
   fi
-  exit 1
 fi
-echo ">> Vespa found: ${FOUND_ROOT}"
-echo ">>   include: ${FOUND_INC}"
-echo ">>   lib:     ${FOUND_LIB}"
 
-# --- Collect the static Vespa archives ---------------------------------------
-# Real archives only: stale *.dll.a import libraries (from an old shared
-# bundle) are skipped with a warning -- they are PE/COFF import archives and
-# would break the mingw link. A bundle with NO real archive at all is already
-# rejected by try_candidate() above; the guard below is belt-and-suspenders.
-VESPA_LIBS=""
-for f in "${FOUND_LIB}"/libvtkCGAL*.a; do
-  [ -e "$f" ] || continue
-  case "$f" in
-    *.dll.a) echo ">> WARNING: skipping stale import library $f" >&2; continue ;;
-  esac
-  VESPA_LIBS="${VESPA_LIBS} $f"
-done
-[ -n "${VESPA_LIBS}" ] || { echo ">> ERROR: no libvtkCGAL*.a (rebuild vespa with BUILD_SHARED_LIBS=OFF)" >&2; exit 1; }
+# --- Vespa include paths and libraries ---------------------------------------
+if [ "$VESPA_VENDORED" = "true" ]; then
+  VESPA_CPPFLAGS="-I../tools/vespa-src/vespa/Algorithm -I../tools/vespa-src/vespa/Delaunay -I../tools/vespa-src/vespa/PointSetProcessing -I../tools/vespa-src/vespa/PolygonMeshProcessing -I../tools/vespa-src/vespa/ShapeReconstruction -I../tools/vespa-src/module-headers"
+  VESPA_LIBS=""
+else
+  echo ">> Vespa found: ${FOUND_ROOT}"
+  echo ">>   include: ${FOUND_INC}"
+  echo ">>   lib:     ${FOUND_LIB}"
+  VESPA_CPPFLAGS="-I${FOUND_INC}"
+  VESPA_LIBS=""
+  for f in "${FOUND_LIB}"/libvtkCGAL*.a; do
+    [ -e "$f" ] || continue
+    case "$f" in
+      *.dll.a) echo ">> WARNING: skipping stale import library $f" >&2; continue ;;
+    esac
+    VESPA_LIBS="${VESPA_LIBS} $f"
+  done
+  [ -n "${VESPA_LIBS}" ] || { echo ">> ERROR: no libvtkCGAL*.a (rebuild vespa with BUILD_SHARED_LIBS=OFF)" >&2; exit 1; }
+fi
 
-# --- VTK: prebuilt tarball, static branch only -------------------------------
-[ -n "${VTK_ROOT}" ] || { echo ">> ERROR: VTK_ROOT is empty" >&2; exit 1; }
-VTK_INCDIR="$(echo "${VTK_ROOT}"/include/vtk-*/vtkObject.h | sed 's|/vtkObject.h||')"
-[ -f "${VTK_INCDIR}/vtkObject.h" ] || { echo ">> ERROR: invalid VTK under ${VTK_ROOT}" >&2; exit 1; }
+# --- VTK: resolved at install time by rvtk -----------------------------------
+# Single quotes keep the make expressions literal: $(shell ...) must be
+# evaluated by make when R CMD INSTALL compiles, not by configure now.
+VTK_CPPFLAGS='$(shell "$(R_HOME)/bin$(R_ARCH_BIN)/Rscript" ../tools/configure.R --cppflags)'
+VTK_LIBS='$(shell "$(R_HOME)/bin$(R_ARCH_BIN)/Rscript" ../tools/configure.R --libs)'
 VTK_ARCHIVES=""
-for a in "${VTK_ROOT}"/lib/libvtk*.a; do
-  [ -e "$a" ] || continue
-  VTK_ARCHIVES="${VTK_ARCHIVES} $a"
-done
-[ -n "${VTK_ARCHIVES}" ] || { echo ">> ERROR: no libvtk*.a under ${VTK_ROOT}/lib" >&2; exit 1; }
 
 # --- Third-party headers required by vtkCGAL*.h: CGAL, Eigen, Boost ----------
 EXTRA_CPPFLAGS="-I${UCRT}/include -I${UCRT}/include/eigen3"
@@ -371,12 +375,18 @@ if [ -e "${UCRT}/lib/libglog.dll.a" ] || [ -e "${UCRT}/lib/libglog.a" ]; then
   GLOG_LIBS="-lglog"
   echo ">> glog detected (ucrt64 ceres depends on it)"
 fi
-SYSTEM_LIBS="-lopengl32 -lglu32 -lws2_32 -liphlpapi -lpsapi -ldbghelp -luser32 -lgdi32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -lkernel32"
+GLOG_CPPFLAGS=""
+if [ -f "${UCRT}/include/glog/logging.h" ] && grep -q "was not included correctly" "${UCRT}/include/glog/logging.h"; then
+  GLOG_CPPFLAGS="-DGLOG_USE_GLOG_EXPORT -include glog/logging.h"
+fi
+SYSTEM_LIBS="-lopengl32 -lglu32 -lws2_32 -liphlpapi -lpsapi -ldbghelp -luser32 -lgdi32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -lkernel32 -Wl,-s"
 
 cat > src/Makevars.win <<EOF
-# Generated by configure.win (tarball-static-v9.2) -- do not edit.
-PKG_CPPFLAGS = ${CGAL_SHIM_FLAGS} -isystem ${VTK_INCDIR} -I${FOUND_INC} ${EXTRA_CPPFLAGS} ${EXPORT_FLAGS} -DCGAL_NDEBUG
-PKG_LIBS = -Wl,--exclude-libs,ALL -Wl,--start-group ${VESPA_LIBS} ${VTK_ARCHIVES} -Wl,--end-group -L${UCRT}/lib ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${SYSTEM_LIBS}
+# Generated by configure.win (vendored-vespa) -- do not edit.
+CXX_STD = CXX17
+CXXFLAGS += -g0
+PKG_CPPFLAGS = ${CGAL_SHIM_FLAGS} ${GLOG_CPPFLAGS} ${VTK_CPPFLAGS} ${VESPA_CPPFLAGS} ${EXTRA_CPPFLAGS} ${EXPORT_FLAGS} -DCGAL_NDEBUG
+PKG_LIBS = -Wl,--exclude-libs,ALL -Wl,--start-group ${VESPA_LIBS} -Wl,--end-group ${VTK_LIBS} -L${UCRT}/lib ${CERES_LIBS} ${GLOG_LIBS} -lgmp -lmpfr ${SYSTEM_LIBS}
 EOF
 
 echo ">> Configuration completed successfully."

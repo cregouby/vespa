@@ -1,0 +1,14 @@
+NAME
+  vtkCGALPSP
+DESCRIPTION
+  "This module contains filters related to the PointSetProcessing module of CGAL."
+GROUPS
+  Meshing
+DEPENDS
+  vtkCGALAlgorithm
+TEST_DEPENDS
+  VTK::CommonSystem
+  VTK::FiltersSources
+  VTK::IOInfovis
+  VTK::IOXML
+  VTK::TestingCore
