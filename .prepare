@@ -14,6 +14,28 @@
 
 set -u
 
+# The build-source stage appends its own auto-generated Config/pak/sysreqs
+# after install_sysdeps(); the binary stage (linux-deps/getdeps.R) reads it
+# verbatim. Merge our required packages into that single field so the value
+# survives R CMD build (read.dcf keeps only the last duplicate field).
+merge_sysreqs() {
+  [ -f DESCRIPTION ] || return 0
+  Rscript --no-init-file -e '
+    d <- read.dcf("DESCRIPTION", keep.white = "Authors@R")
+    v <- d[1, ]
+    key <- "Config/pak/sysreqs"
+    cur <- if (key %in% names(v)) v[[key]] else ""
+    if (is.na(cur)) cur <- ""
+    pkgs <- unique(c(strsplit(cur, "[[:space:]]+")[[1]],
+                     "libcgal-dev", "libceres-dev"))
+    pkgs <- pkgs[nzchar(pkgs)]
+    v[[key]] <- paste(pkgs, collapse = " ")
+    write.dcf(matrix(v, nrow = 1, dimnames = list(NULL, names(v))),
+              "DESCRIPTION", keep.white = "Authors@R")
+  ' >/dev/null 2>&1 || true
+}
+trap merge_sysreqs EXIT
+
 have_cgal() {
   [ -f /usr/include/CGAL/config.h ] || [ -f /usr/local/include/CGAL/config.h ]
 }
