@@ -1,30 +1,187 @@
-name: Build Vespa Binaries (Windows)
+name: Build Vespa Binary Bundles
+
+# Publishes the prebuilt bundles consumed by configure / configure.win when
+# the r-universe binary runners lack a dependency:
+#   * deps-for-vespa-1   -> cgal-ceres-<platform>.tar.gz   (macOS only)
+#   * vespa-static-1.1   -> vespa-<ver>-static-<platform>.tar.gz
+#   * vtk-for-vespa-*    -> prebuilt VTK (published separately, reused here)
+#
+# Run this workflow (and wait for the assets to appear) BEFORE re-triggering
+# the r-universe binary builds. Asset names must match the URLs built in
+# configure and configure.win.
+#
+# The macOS runner labels may need bumping as GitHub retires old images:
+#   darwin-x86_64 -> macos-15-intel, darwin-arm64 -> macos-14.
 
 on:
-  workflow_dispatch:  
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VESPA_BUNDLE_VERSION: "1.1"
+  DEPS_BUNDLE_VERSION: "1"
 
 jobs:
-  build-vespa-windows:
-    runs-on: windows-latest
+  macos-bundles:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            platform: darwin-x86_64
+            deployment_target: "11.0"
+          - runner: macos-14
+            platform: darwin-arm64
+            deployment_target: "14.0"
+    runs-on: ${{ matrix.runner }}
 
-    env:
-      CMAKE_GENERATOR: Ninja
-      # Force the Rtools static-posix toolchain (same ABI as CRAN R)
-      CC: gcc
-      CXX: g++
-      INSTALL_DIR: inst/vespa
-      
     steps:
       - uses: actions/checkout@v7
-      - uses: r-lib/actions/setup-r@v2
-      
-      - name: Read Vespa version
+
+      - name: Install build tools
         shell: bash
         run: |
-          echo "VESPA_TAG=$(tr -d '[:space:]' < tools/vespa-version.txt)" >> "$GITHUB_ENV"
-        
-      # pacman from Rtools is on PATH after setup-r
-      - name: Install dependencies via pacman
+          set -euo pipefail
+          brew install cmake ninja cgal eigen
+
+      - name: Build static CGAL/Ceres bundle
+        shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment_target }}
+        run: |
+          set -euo pipefail
+          PREFIX="$RUNNER_TEMP/deps-prefix"
+          mkdir -p "$PREFIX"
+          EIGEN="$(brew --prefix eigen)"
+          TARGET="${{ matrix.deployment_target }}"
+
+          # glog (static, no gflags/unwind so Ceres has a single extra dep).
+          git clone --depth 1 --branch v0.7.1 https://github.com/google/glog.git "$RUNNER_TEMP/glog"
+          cmake -S "$RUNNER_TEMP/glog" -B "$RUNNER_TEMP/glog-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$TARGET" \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_TESTING=OFF \
+            -DWITH_GFLAGS=OFF \
+            -DWITH_UNWIND=none \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+          cmake --build "$RUNNER_TEMP/glog-build" --parallel
+          cmake --install "$RUNNER_TEMP/glog-build"
+
+          # Ceres (static, Eigen sparse only: no SuiteSparse/LAPACK/CUDA).
+          git clone --depth 1 --branch 2.2.0 https://github.com/ceres-solver/ceres-solver.git "$RUNNER_TEMP/ceres"
+          cmake -S "$RUNNER_TEMP/ceres" -B "$RUNNER_TEMP/ceres-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$TARGET" \
+            -DCMAKE_PREFIX_PATH="$PREFIX;$EIGEN" \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_TESTING=OFF \
+            -DBUILD_EXAMPLES=OFF \
+            -DBUILD_BENCHMARKS=OFF \
+            -DSUITESPARSE=OFF \
+            -DEIGENSPARSE=ON \
+            -DLAPACK=OFF \
+            -DGFLAGS=OFF \
+            -DMINIGLOG=OFF \
+            -DUSE_CUDA=OFF \
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+          cmake --build "$RUNNER_TEMP/ceres-build" --parallel
+          cmake --install "$RUNNER_TEMP/ceres-build"
+
+          # CGAL is header-only for our use; ship the Homebrew headers.
+          cp -R "$(brew --prefix cgal)/include/CGAL" "$PREFIX/include/"
+
+          # Eigen headers + CMake config: cranlibs only exposes Eigen under
+          # include/eigen3, but CGAL/Ceres use <Eigen/...>. Flattening it into
+          # the bundle keeps the compile self-contained and lets the
+          # auto-build fallback find Eigen3.
+          EIGEN_PREFIX="$(brew --prefix eigen)"
+          cp -R "$EIGEN_PREFIX/include/eigen3/." "$PREFIX/include/"
+          mkdir -p "$PREFIX/share"
+          [ -d "$EIGEN_PREFIX/share/eigen3" ] && cp -R "$EIGEN_PREFIX/share/eigen3" "$PREFIX/share/"
+
+          for f in include/CGAL/config.h include/ceres/ceres.h include/Eigen/Core lib/libceres.a lib/libglog.a; do
+            [ -e "$PREFIX/$f" ] || { echo "ERROR: missing $PREFIX/$f"; ls -R "$PREFIX"; exit 1; }
+          done
+
+          ASSET="cgal-ceres-${{ matrix.platform }}.tar.gz"
+          tar -czf "$RUNNER_TEMP/$ASSET" -C "$PREFIX" include lib share
+          echo "DEPS_ASSET=$ASSET" >> "$GITHUB_ENV"
+
+      - name: Publish CGAL/Ceres bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="deps-for-vespa-${DEPS_BUNDLE_VERSION}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" \
+              --notes "Prebuilt CGAL headers + static Ceres/glog for vespa r-universe macOS binary builds." || true
+          gh release upload "$TAG" "$RUNNER_TEMP/$DEPS_ASSET" --clobber
+
+      - name: Fetch prebuilt VTK
+        shell: bash
+        run: |
+          set -euo pipefail
+          VTK_VERSION="$(tr -d '[:space:]' < tools/vtk-version.txt)"
+          ROOT="$RUNNER_TEMP/vtk"
+          mkdir -p "$ROOT"
+          URL="https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${{ matrix.platform }}.tar.gz"
+          curl -fsSL "$URL" -o "$RUNNER_TEMP/vtk.tar.gz"
+          tar -xzf "$RUNNER_TEMP/vtk.tar.gz" -C "$ROOT" --strip-components=1
+          rm -f "$RUNNER_TEMP/vtk.tar.gz"
+          ls "$ROOT"/lib/cmake/vtk-*/vtk-config.cmake >/dev/null 2>&1 || { echo "ERROR: incomplete VTK bundle"; exit 1; }
+          echo "VTK_ROOT=$ROOT" >> "$GITHUB_ENV"
+
+      - name: Build static Vespa bundle
+        shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment_target }}
+        run: |
+          set -euo pipefail
+          PREFIX="$RUNNER_TEMP/deps-prefix"
+          INSTALL="$RUNNER_TEMP/vespa-install"
+          VESPA_TAG="$(tr -d '[:space:]' < tools/vespa-version.txt)"
+          cmake -S tools/build-vespa -B "$RUNNER_TEMP/vespa-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="${{ matrix.deployment_target }}" \
+            -DINSTALL_PREFIX="$INSTALL" \
+            -DVESPA_GIT_TAG="$VESPA_TAG" \
+            -DVTK_ROOT="$VTK_ROOT" \
+            -DCMAKE_PREFIX_PATH="$PREFIX;$(brew --prefix)"
+          cmake --build "$RUNNER_TEMP/vespa-build" --parallel
+
+          [ -d "$INSTALL/lib" ] || { echo "ERROR: Vespa lib/ missing"; ls -R "$INSTALL"; exit 1; }
+          ASSET="vespa-${VESPA_BUNDLE_VERSION}-static-${{ matrix.platform }}.tar.gz"
+          tar -czf "$RUNNER_TEMP/$ASSET" -C "$INSTALL" include lib
+          echo "VESPA_ASSET=$ASSET" >> "$GITHUB_ENV"
+
+      - name: Publish Vespa bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="vespa-static-${VESPA_BUNDLE_VERSION}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" \
+              --notes "Static Vespa bundles for vespa r-universe binary builds." || true
+          gh release upload "$TAG" "$RUNNER_TEMP/$VESPA_ASSET" --clobber
+
+  windows-bundle:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: r-lib/actions/setup-r@v2
+
+      - name: Install Rtools dependencies
         shell: bash
         run: |
           pacman -S --noconfirm --needed \
@@ -32,38 +189,55 @@ jobs:
             mingw-w64-ucrt-x86_64-ceres-solver \
             mingw-w64-ucrt-x86_64-eigen3 \
             mingw-w64-ucrt-x86_64-boost \
-            mingw-w64-ucrt-x86_64-ninja \
-            mingw-w64-ucrt-x86_64-vtk \
-            mingw-w64-ucrt-x86_64-nlohmann-json
-      
-      - name: Build Vespa (static)
-        shell: bash
-        run: |
-          T="${{ runner.temp }}"
-          T="${T//\\//}"
-          
-          mkdir -p "$INSTALL_DIR"
-          
-          cmake -S tools/build-vespa -B "$T/vespa-build" \
-            -DINSTALL_PREFIX="$PWD/$INSTALL_DIR" \
-            -DVESPA_GIT_TAG="$VESPA_TAG" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc \
-            -DCMAKE_CXX_COMPILER=g++
+            mingw-w64-ucrt-x86_64-ninja
+          echo "C:/rtools45/ucrt64/bin" >> "$GITHUB_PATH"
 
-          cmake --build "$T/vespa-build"
-      
-      - name: Package Vespa
+      - name: Fetch prebuilt VTK
         shell: bash
         run: |
-          ZIP_NAME="vespa-${VESPA_TAG}-static-posix-x64.zip"
-          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
-          ls -R "$INSTALL_DIR"
-          (cd "$INSTALL_DIR" && 7z a -tzip "$ZIP_NAME" .)
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: vespa-binaries-windows
-          path: ${{ env.INSTALL_DIR }}/${{ env.ZIP_NAME }}
-          retention-days: 7
+          set -euo pipefail
+          T="${RUNNER_TEMP//\\//}"
+          VTK_VERSION="$(tr -d '[:space:]' < tools/vtk-version.txt)"
+          ROOT="$T/vtk"
+          mkdir -p "$ROOT"
+          URL="https://github.com/cregouby/vespa/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-windows-x86_64.tar.gz"
+          curl -fsSL "$URL" -o "$T/vtk.tar.gz"
+          tar -xzf "$T/vtk.tar.gz" -C "$ROOT" --strip-components=1
+          rm -f "$T/vtk.tar.gz"
+          echo "VTK_ROOT=$ROOT" >> "$GITHUB_ENV"
+
+      - name: Build static Vespa bundle
+        shell: bash
+        env:
+          CC: C:/rtools45/x86_64-w64-mingw32.static.posix/bin/gcc.exe
+          CXX: C:/rtools45/x86_64-w64-mingw32.static.posix/bin/g++.exe
+        run: |
+          set -euo pipefail
+          T="${RUNNER_TEMP//\\//}"
+          INSTALL="$T/vespa-install"
+          mkdir -p "$INSTALL"
+          VESPA_TAG="$(tr -d '[:space:]' < tools/vespa-version.txt)"
+          cmake -S tools/build-vespa -B "$T/vespa-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DINSTALL_PREFIX="$INSTALL" \
+            -DVESPA_GIT_TAG="$VESPA_TAG" \
+            -DVTK_ROOT="$VTK_ROOT"
+          cmake --build "$T/vespa-build" --parallel
+
+          [ -d "$INSTALL/lib" ] || { echo "ERROR: Vespa lib/ missing"; ls -R "$INSTALL"; exit 1; }
+          ASSET="vespa-${VESPA_BUNDLE_VERSION}-static-windows-x86_64.tar.gz"
+          tar -czf "$T/$ASSET" -C "$INSTALL" include lib
+          echo "VESPA_ASSET=$ASSET" >> "$GITHUB_ENV"
+
+      - name: Publish Vespa bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          T="${RUNNER_TEMP//\\//}"
+          TAG="vespa-static-${VESPA_BUNDLE_VERSION}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" \
+              --notes "Static Vespa bundles for vespa r-universe binary builds." || true
+          gh release upload "$TAG" "$T/$VESPA_ASSET" --clobber

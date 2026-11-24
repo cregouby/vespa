@@ -110,6 +110,80 @@ print_install_instructions() {
   echo ""
 }
 
+# --- Platform detection (shared by all prebuilt bundle downloads) ------------
+OS=$(uname -s)
+ARCH=$(uname -m)
+PLATFORM=""
+case "$OS" in
+  Linux*)
+    if [ "$ARCH" = "x86_64" ]; then
+      PLATFORM="linux-x86_64"
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+      PLATFORM="linux-aarch64"
+    fi
+    ;;
+  Darwin*)
+    if [ "$ARCH" = "arm64" ]; then
+      PLATFORM="darwin-arm64"
+    else
+      PLATFORM="darwin-x86_64"
+    fi
+    ;;
+esac
+
+# Repo that hosts the prebuilt bundles (VTK, CGAL/Ceres, Vespa). Do NOT use
+# GITHUB_REPOSITORY here: under r-universe it points at the universe monorepo
+# instead of this package repo.
+GITHUB_REPO="${VESPA_RELEASES_REPO:-cregouby/vespa}"
+
+# --- Prebuilt CGAL/Ceres bundle (macOS only) ---------------------------------
+# The r-universe macOS runner has no Homebrew, and its CRAN library bundle
+# ships Boost/Eigen/GMP/MPFR but neither CGAL nor Ceres. When either is
+# missing we fetch a self-contained bundle produced by
+# .github/workflows/build-vespa-binaries.yml (CGAL headers + static
+# Ceres/glog) and use it for both the package compile and the link. Extract to
+# a temporary directory: only headers/static archives are needed at build time,
+# so they must not end up inside the installed package.
+DEPS_ROOT=""
+if [ "$OS" = "Darwin" ] && [ -n "$PLATFORM" ]; then
+  _have_cgal=false
+  for _d in /usr/include /usr/local/include /opt/homebrew/include; do
+    [ -f "$_d/CGAL/config.h" ] && _have_cgal=true
+  done
+  _have_ceres=false
+  if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists ceres 2>/dev/null; then
+    _have_ceres=true
+  else
+    for _d in /usr/include /usr/local/include /opt/homebrew/include; do
+      [ -f "$_d/ceres/ceres.h" ] && _have_ceres=true
+    done
+    for _d in /usr/lib /usr/local/lib /opt/homebrew/lib; do
+      ls "$_d"/libceres.* >/dev/null 2>&1 && _have_ceres=true
+    done
+  fi
+  if [ "$_have_cgal" = "false" ] || [ "$_have_ceres" = "false" ]; then
+    DEPS_VERSION="${VESPA_DEPS_VERSION:-1}"
+    DEPS_URL="https://github.com/${GITHUB_REPO}/releases/download/deps-for-vespa-${DEPS_VERSION}/cgal-ceres-${PLATFORM}.tar.gz"
+    echo ">> Downloading prebuilt CGAL/Ceres bundle from $DEPS_URL"
+    _DEPS_TMP="$(mktemp -d "${TMPDIR:-/tmp}/vespa-deps.XXXXXX")"
+    if curl -fsSL "$DEPS_URL" -o "$_DEPS_TMP/deps.tar.gz" 2>/dev/null; then
+      tar -xzf "$_DEPS_TMP/deps.tar.gz" -C "$_DEPS_TMP" || true
+      rm -f "$_DEPS_TMP/deps.tar.gz"
+      if [ -f "$_DEPS_TMP/include/CGAL/config.h" ] && \
+         [ -f "$_DEPS_TMP/include/ceres/ceres.h" ]; then
+        DEPS_ROOT="$_DEPS_TMP"
+        echo ">> CGAL/Ceres bundle extracted to $DEPS_ROOT"
+      else
+        echo ">> WARNING: CGAL/Ceres bundle is incomplete"
+        rm -rf "$_DEPS_TMP"
+      fi
+    else
+      echo ">> WARNING: could not download CGAL/Ceres bundle"
+      rm -rf "$_DEPS_TMP"
+    fi
+  fi
+fi
+
 # --- Check for CGAL ---
 CGAL_INC=""
 if [ -f /usr/include/CGAL/config.h ]; then
@@ -118,6 +192,8 @@ elif [ -f /usr/local/include/CGAL/config.h ]; then
   CGAL_INC="/usr/local/include"
 elif [ -f /opt/homebrew/include/CGAL/config.h ]; then
   CGAL_INC="/opt/homebrew/include"
+elif [ -n "$DEPS_ROOT" ] && [ -f "$DEPS_ROOT/include/CGAL/config.h" ]; then
+  CGAL_INC="$DEPS_ROOT/include"
 elif command -v pkg-config >/dev/null 2>&1 && pkg-config --exists cgal; then
   CGAL_INC=$(pkg-config --cflags-only-I cgal | sed 's/-I//g' | awk '{print $1}')
 fi
@@ -142,6 +218,7 @@ VTK_SOURCE=""
 VTK_INCDIR=""
 VTK_LIBDIR=""
 VTK_MINOR=""
+VTK_DOWNLOAD_ROOT=""
 
 # Strategy 0: prebuilt prefix via VTK_ROOT (CI or manual install)
 if [ -n "$VTK_ROOT" ] && [ -d "$VTK_ROOT/include" ]; then
@@ -211,25 +288,27 @@ if [ "$VTK_FOUND" = "false" ]; then
     VTK_URL="https://github.com/${GITHUB_REPO}/releases/download/vtk-for-vespa-${VTK_VERSION}/vtk-${VTK_VERSION}-vespa-${PLATFORM}.tar.gz"
 
     echo ">> Downloading VTK $VTK_VERSION from $VTK_URL"
-    if curl -fsSL "$VTK_URL" -o vtk-vespa.tar.gz 2>/dev/null; then
-      # Purge any stale bundle from a previous build (possibly a different
-      # VTK version): mixing libvtk*-9.5.a and libvtk*-9.6.a in the same
-      # directory links both -> duplicate symbol definitions at link time.
-      rm -rf inst/vtk
-      mkdir -p inst/vtk
-      tar -xzf vtk-vespa.tar.gz -C inst/vtk --strip-components=1
-      rm vtk-vespa.tar.gz
-      VTK_INCDIR="$(pwd)/inst/vtk/include/vtk-${VTK_MINOR}"
-      VTK_LIBDIR="$(pwd)/inst/vtk/lib"
+    _VTK_TMP="$(mktemp -d "${TMPDIR:-/tmp}/vtk-bundle.XXXXXX")"
+    if curl -fsSL "$VTK_URL" -o "$_VTK_TMP/vtk.tar.gz" 2>/dev/null; then
+      # Extract to a temporary directory: the static archives are only needed
+      # at link time, and writing them under inst/ would copy ~100 MB of dead
+      # archives into every installed binary package.
+      tar -xzf "$_VTK_TMP/vtk.tar.gz" -C "$_VTK_TMP" --strip-components=1 || true
+      rm -f "$_VTK_TMP/vtk.tar.gz"
+      VTK_INCDIR="$_VTK_TMP/include/vtk-${VTK_MINOR}"
+      VTK_LIBDIR="$_VTK_TMP/lib"
       if [ -f "$VTK_INCDIR/vtkObject.h" ] && ls "$VTK_LIBDIR"/libvtk*.a >/dev/null 2>&1; then
         VTK_FOUND=true
         VTK_SOURCE="downloaded"
-        echo ">> VTK downloaded and extracted to inst/vtk"
+        VTK_DOWNLOAD_ROOT="$_VTK_TMP"
+        echo ">> VTK downloaded and extracted to $VTK_DOWNLOAD_ROOT"
       else
         echo ">> ERROR: incomplete VTK tarball (missing vtkObject.h or libvtk*.a)"
+        rm -rf "$_VTK_TMP"
       fi
     else
       echo ">> ERROR: Failed to download VTK from $VTK_URL"
+      rm -rf "$_VTK_TMP"
     fi
   fi
 fi
@@ -270,6 +349,16 @@ else
 
   if [ -n "$CERES_INC" ] && [ -n "$CERES_LIBDIR" ]; then
     echo ">> Found Ceres in standard paths"
+  fi
+fi
+
+# Bundle fallback: CGAL/Ceres prebuilt tarball (macOS r-universe runner).
+if [ -z "$CERES_LIBS" ] && [ -n "$DEPS_ROOT" ] && \
+   [ -f "$DEPS_ROOT/include/ceres/ceres.h" ]; then
+  CERES_CFLAGS="-I$DEPS_ROOT/include"
+  if [ -f "$DEPS_ROOT/lib/libceres.a" ]; then
+    CERES_LIBS="-L$DEPS_ROOT/lib -lceres -lpthread"
+    echo ">> Found Ceres in prebuilt bundle ($DEPS_ROOT)"
   fi
 fi
 
@@ -367,6 +456,35 @@ if [ -z "$VESPA_LIBDIR" ]; then
   fi
 fi
 
+# Priority 2.5: prebuilt Vespa static bundle from GitHub releases (macOS).
+# Avoids rebuilding Vespa at install time on the r-universe binary runner,
+# where CMake configs for CGAL/Ceres may not be discoverable. Extracted to a
+# temporary directory: only static archives are needed at link time.
+if [ -z "$VESPA_LIBDIR" ] && [ "$OS" = "Darwin" ] && [ -n "$PLATFORM" ]; then
+  VESPA_BUNDLE_VERSION="${VESPA_BUNDLE_VERSION:-1.1}"
+  VESPA_BUNDLE_URL="https://github.com/${GITHUB_REPO}/releases/download/vespa-static-${VESPA_BUNDLE_VERSION}/vespa-${VESPA_BUNDLE_VERSION}-static-${PLATFORM}.tar.gz"
+  echo ">> Vespa not found; trying prebuilt bundle: $VESPA_BUNDLE_URL"
+  _VESPA_TMP="$(mktemp -d "${TMPDIR:-/tmp}/vespa-bundle.XXXXXX")"
+  if curl -fsSL "$VESPA_BUNDLE_URL" -o "$_VESPA_TMP/vespa.tar.gz" 2>/dev/null; then
+    tar -xzf "$_VESPA_TMP/vespa.tar.gz" -C "$_VESPA_TMP" || true
+    rm -f "$_VESPA_TMP/vespa.tar.gz"
+    _VI="$(vespa_include_dir "$_VESPA_TMP")"
+    if [ -n "$_VI" ] && [ -d "$_VESPA_TMP/lib" ] && has_real_archive "$_VESPA_TMP/lib"; then
+      VESPA_ROOT="$_VESPA_TMP"
+      VESPA_INC="$_VI"
+      VESPA_LIBDIR="$_VESPA_TMP/lib"
+      VESPA_SOURCE="prebuilt"
+      echo ">> Checking for Vespa... OK (prebuilt bundle in $VESPA_ROOT)"
+    else
+      echo ">> WARNING: prebuilt Vespa bundle is incomplete"
+      rm -rf "$_VESPA_TMP"
+    fi
+  else
+    echo ">> WARNING: could not download prebuilt Vespa bundle"
+    rm -rf "$_VESPA_TMP"
+  fi
+fi
+
 # Priority 3: auto-build (static, against the downloaded VTK tarball or the
 # VTK_ROOT prefix; the superbuild requires VTK_ROOT).
 auto_build_vespa() {
@@ -404,6 +522,12 @@ auto_build_vespa() {
   echo ">> Building Vespa ${VESPA_GIT_TAG} (static, against VTK in ${AUTOBUILD_VTK_ROOT}) ..."
   echo ">> (this may take several minutes) ..."
 
+  # Prefer the CGAL/Ceres bundle for find_package(CGAL/Ceres) when present.
+  _cmake_prefix_args=""
+  if [ -n "$DEPS_ROOT" ]; then
+    _cmake_prefix_args="-DCMAKE_PREFIX_PATH=${DEPS_ROOT}"
+  fi
+
   cmake -S "${PKG_SRC}/tools/build-vespa" \
         -B "$BUILD_DIR" \
         -DINSTALL_PREFIX="$INST_DIR" \
@@ -411,6 +535,7 @@ auto_build_vespa() {
         -DVTK_ROOT="$AUTOBUILD_VTK_ROOT" \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
+        ${_cmake_prefix_args} \
     && cmake --build "$BUILD_DIR"
 
   STATUS=$?
@@ -420,8 +545,8 @@ auto_build_vespa() {
 
 if [ -z "$VESPA_LIBDIR" ]; then
   AUTOBUILD_VTK_ROOT=""
-  if [ "$VTK_SOURCE" = "downloaded" ] && [ -d "$(pwd)/inst/vtk/lib" ]; then
-    AUTOBUILD_VTK_ROOT="$(pwd)/inst/vtk"
+  if [ "$VTK_SOURCE" = "downloaded" ] && [ -n "$VTK_DOWNLOAD_ROOT" ] && [ -d "$VTK_DOWNLOAD_ROOT/lib" ]; then
+    AUTOBUILD_VTK_ROOT="$VTK_DOWNLOAD_ROOT"
   elif [ -n "$VTK_ROOT" ] && [ -d "$VTK_ROOT/lib" ]; then
     AUTOBUILD_VTK_ROOT="$VTK_ROOT"
   fi
@@ -513,7 +638,7 @@ if [ "$VTK_SOURCE" = "system" ]; then
   VTK_CPPFLAGS=$(pkg-config --cflags "$VTK_PKG")
   VTK_LIBS=$(pkg-config --libs "$VTK_PKG")
 else
-  # VTK_SOURCE = prebuilt (VTK_ROOT) or downloaded (inst/vtk):
+  # VTK_SOURCE = prebuilt (VTK_ROOT) or downloaded (temporary prefix):
   # VTK_INCDIR / VTK_LIBDIR were set by the matching strategy above.
   # -isystem: avoids the -Wpedantic spam from VTK headers (--as-cran warnings)
   VTK_CPPFLAGS="-isystem ${VTK_INCDIR}"
@@ -544,9 +669,13 @@ fi
 
 # --- glog, if present (ceres may pull symbols from it) ---
 GLOG_LIBS=""
-for l in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /usr/lib /usr/local/lib /opt/homebrew/lib; do
-  if ls $l/libglog.* >/dev/null 2>&1; then GLOG_LIBS="-lglog"; break; fi
-done
+if [ -n "$DEPS_ROOT" ] && { [ -f "$DEPS_ROOT/lib/libglog.a" ] || ls "$DEPS_ROOT"/lib/libglog.* >/dev/null 2>&1; }; then
+  GLOG_LIBS="-L$DEPS_ROOT/lib -lglog"
+else
+  for l in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /usr/lib /usr/local/lib /opt/homebrew/lib; do
+    if ls $l/libglog.* >/dev/null 2>&1; then GLOG_LIBS="-lglog"; break; fi
+  done
+fi
 
 EXPORT_FLAGS="-DVTKCGALALGORITHM_EXPORT= -DVTKCGALPMP_EXPORT= -DVTKCGALPSP_EXPORT= -DVTKCGALSR_EXPORT= -DVTKCGALDELAUNAY_EXPORT="
 

@@ -27,7 +27,7 @@ merge_sysreqs() {
     cur <- if (key %in% names(v)) v[[key]] else ""
     if (is.na(cur)) cur <- ""
     pkgs <- unique(c(strsplit(cur, "[[:space:]]+")[[1]],
-                     "libcgal-dev", "libceres-dev"))
+                     "libcgal-dev", "libceres-dev", "git"))
     pkgs <- pkgs[nzchar(pkgs)]
     v[[key]] <- paste(pkgs, collapse = " ")
     write.dcf(matrix(v, nrow = 1, dimnames = list(NULL, names(v))),

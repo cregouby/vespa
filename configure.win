@@ -81,6 +81,21 @@
 set -e
 UCRT="C:/rtools45/ucrt64"
 
+# Prebuilt bundle coordinates (see .github/workflows/build-vespa-binaries.yml).
+# The r-universe Windows binary runner has neither VESPA_ROOT nor an in-tree
+# bundle, so configure.win downloads the static Vespa bundle and the prebuilt
+# VTK tarball when they are not provided by the environment.
+VESPA_RELEASES_REPO="${VESPA_RELEASES_REPO:-cregouby/vespa}"
+VESPA_BUNDLE_VERSION="${VESPA_BUNDLE_VERSION:-1.1}"
+
+# Temp parent converted to forward slashes so the mingw toolchain understands
+# the paths written into Makevars.win (same convention as RUNNER_TEMP in CI).
+bundle_tmpdir() {
+  _base="${RUNNER_TEMP:-${TEMP:-${TMP:-/tmp}}}"
+  _base="$(echo "${_base}" | tr '\\' '/')"
+  echo "${_base}/$1-$$"
+}
+
 # --- Vespa detection helpers (errexit-safe; see configure for rationale) -----
 # has_real_archive DIR: succeed if DIR holds at least one libvtkCGAL*.a that
 # is NOT a Windows import library (*.dll.a). Only called from if/elif
@@ -159,6 +174,24 @@ if [ -z "${FOUND_ROOT}" ] && [ -n "${RUNNER_TEMP_N}" ]; then
   try_candidate "${RUNNER_TEMP_N}/vespa-build/vespa-install"
 fi
 
+# Nothing local: fetch the prebuilt static Vespa bundle (r-universe runner).
+if [ -z "${FOUND_ROOT}" ]; then
+  _vespa_url="https://github.com/${VESPA_RELEASES_REPO}/releases/download/vespa-static-${VESPA_BUNDLE_VERSION}/vespa-${VESPA_BUNDLE_VERSION}-static-windows-x86_64.tar.gz"
+  echo ">> Vespa bundle not found; downloading ${_vespa_url}"
+  _vespa_tmp="$(bundle_tmpdir vespa-bundle)"
+  rm -rf "${_vespa_tmp}"
+  mkdir -p "${_vespa_tmp}"
+  if curl -fsSL "${_vespa_url}" -o "${_vespa_tmp}/vespa.tar.gz"; then
+    tar -xzf "${_vespa_tmp}/vespa.tar.gz" -C "${_vespa_tmp}" || true
+    rm -f "${_vespa_tmp}/vespa.tar.gz"
+    try_candidate "${_vespa_tmp}"
+  fi
+  if [ -z "${FOUND_ROOT}" ]; then
+    echo ">> WARNING: could not obtain the prebuilt Vespa bundle" >&2
+    rm -rf "${_vespa_tmp}"
+  fi
+fi
+
 if [ -z "${FOUND_ROOT}" ] || [ -z "${FOUND_INC}" ] || [ -z "${FOUND_LIB}" ]; then
   echo ">> ERROR: static Vespa bundle not found." >&2
   echo ">> Diagnostics dump:" >&2
@@ -215,7 +248,26 @@ done
 [ -n "${VESPA_LIBS}" ] || { echo ">> ERROR: no libvtkCGAL*.a (rebuild vespa with BUILD_SHARED_LIBS=OFF)" >&2; exit 1; }
 
 # --- VTK: prebuilt tarball, static branch only -------------------------------
-[ -n "${VTK_ROOT}" ] || { echo ">> ERROR: VTK_ROOT is empty" >&2; exit 1; }
+# When VTK_ROOT is unset (r-universe binary runner), fetch the same prebuilt
+# static VTK release used by configure on Unix.
+if [ -z "${VTK_ROOT}" ]; then
+  _vtk_version="9.7.2"
+  if [ -f tools/vtk-version.txt ]; then
+    _v="$(tr -d '[:space:]' < tools/vtk-version.txt)"
+    [ -n "${_v}" ] && _vtk_version="${_v}"
+  fi
+  _vtk_url="https://github.com/${VESPA_RELEASES_REPO}/releases/download/vtk-for-vespa-${_vtk_version}/vtk-${_vtk_version}-vespa-windows-x86_64.tar.gz"
+  echo ">> VTK_ROOT is empty; downloading ${_vtk_url}"
+  _vtk_tmp="$(bundle_tmpdir vtk-bundle)"
+  rm -rf "${_vtk_tmp}"
+  mkdir -p "${_vtk_tmp}"
+  if curl -fsSL "${_vtk_url}" -o "${_vtk_tmp}/vtk.tar.gz"; then
+    tar -xzf "${_vtk_tmp}/vtk.tar.gz" -C "${_vtk_tmp}" --strip-components=1 || true
+    rm -f "${_vtk_tmp}/vtk.tar.gz"
+    VTK_ROOT="${_vtk_tmp}"
+  fi
+fi
+[ -n "${VTK_ROOT}" ] || { echo ">> ERROR: VTK_ROOT is empty and VTK download failed" >&2; exit 1; }
 VTK_INCDIR="$(echo "${VTK_ROOT}"/include/vtk-*/vtkObject.h | sed 's|/vtkObject.h||')"
 [ -f "${VTK_INCDIR}/vtkObject.h" ] || { echo ">> ERROR: invalid VTK under ${VTK_ROOT}" >&2; exit 1; }
 VTK_ARCHIVES=""
